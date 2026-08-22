@@ -1,830 +1,830 @@
 {
-  "volumes": [
+  "volumenes": [
     {
       "num": 1,
-      "year": 1998,
-      "issues": [
+      "año": 1998,
+      "numeros": [
         {
           "num": 1,
-          "cover": "https://gaceta.rsme.es/portadas/p_V1N1.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V1N1.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=49",
-          "page_start": 1,
-          "page_end": 148
+          "pagina_inicio": 1,
+          "pagina_fin": 148
         },
         {
           "num": 2,
-          "cover": "https://gaceta.rsme.es/portadas/p_V1N2.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V1N2.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=50",
-          "page_start": 149,
-          "page_end": 324
+          "pagina_inicio": 149,
+          "pagina_fin": 324
         },
         {
           "num": 3,
-          "cover": "https://gaceta.rsme.es/portadas/p_V1N3.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V1N3.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=51",
-          "page_start": 325,
-          "page_end": 512
+          "pagina_inicio": 325,
+          "pagina_fin": 512
         }
       ]
     },
     {
       "num": 2,
-      "year": 1999,
-      "issues": [
+      "año": 1999,
+      "numeros": [
         {
           "num": 1,
-          "cover": "https://gaceta.rsme.es/portadas/p_V2N1.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V2N1.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=52",
-          "page_start": 1,
-          "page_end": 202
+          "pagina_inicio": 1,
+          "pagina_fin": 202
         },
         {
           "num": 2,
-          "cover": "https://gaceta.rsme.es/portadas/p_V2N2.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V2N2.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=53",
-          "page_start": 203,
-          "page_end": 411
+          "pagina_inicio": 203,
+          "pagina_fin": 411
         },
         {
           "num": 3,
-          "cover": "https://gaceta.rsme.es/portadas/p_V2N3.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V2N3.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=54",
-          "page_start": 411,
-          "page_end": 598
+          "pagina_inicio": 411,
+          "pagina_fin": 598
         }
       ]
     },
     {
       "num": 3,
-      "year": 2000,
-      "issues": [
+      "año": 2000,
+      "numeros": [
         {
           "num": 1,
-          "cover": "https://gaceta.rsme.es/portadas/p_V3N1.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V3N1.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=27",
-          "page_start": 1,
-          "page_end": 158
+          "pagina_inicio": 1,
+          "pagina_fin": 158
         },
         {
           "num": 2,
-          "cover": "https://gaceta.rsme.es/portadas/p_V3N2.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V3N2.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=28",
-          "page_start": 159,
-          "page_end": 380
+          "pagina_inicio": 159,
+          "pagina_fin": 380
         },
         {
           "num": 3,
-          "cover": "https://gaceta.rsme.es/portadas/p_V3N3.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V3N3.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=29",
-          "page_start": 381,
-          "page_end": 600
+          "pagina_inicio": 381,
+          "pagina_fin": 600
         }
       ]
     },
     {
       "num": 4,
-      "year": 2001,
-      "issues": [
+      "año": 2001,
+      "numeros": [
         {
           "num": 1,
-          "cover": "https://gaceta.rsme.es/portadas/p_V4N1.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V4N1.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=30",
-          "page_start": 1,
-          "page_end": 306
+          "pagina_inicio": 1,
+          "pagina_fin": 306
         },
         {
           "num": 2,
-          "cover": "https://gaceta.rsme.es/portadas/p_V4N2.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V4N2.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=31",
-          "page_start": 307,
-          "page_end": 494
+          "pagina_inicio": 307,
+          "pagina_fin": 494
         },
         {
           "num": 3,
-          "cover": "https://gaceta.rsme.es/portadas/p_V4N3.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V4N3.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=32",
-          "page_start": 495,
-          "page_end": 696
+          "pagina_inicio": 495,
+          "pagina_fin": 696
         }
       ]
     },
     {
       "num": 5,
-      "year": 2002,
-      "issues": [
+      "año": 2002,
+      "numeros": [
         {
           "num": 1,
-          "cover": "https://gaceta.rsme.es/portadas/p_V5N1.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V5N1.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=33",
-          "page_start": 1,
-          "page_end": 250
+          "pagina_inicio": 1,
+          "pagina_fin": 250
         },
         {
           "num": 2,
-          "cover": "https://gaceta.rsme.es/portadas/p_V5N2.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V5N2.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=46",
-          "page_start": 251,
-          "page_end": 502
+          "pagina_inicio": 251,
+          "pagina_fin": 502
         },
         {
           "num": 3,
-          "cover": "https://gaceta.rsme.es/portadas/p_V5N3.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V5N3.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=36",
-          "page_start": 503,
-          "page_end": 818
+          "pagina_inicio": 503,
+          "pagina_fin": 818
         }
       ]
     },
     {
       "num": 6,
-      "year": 2003,
-      "issues": [
+      "año": 2003,
+      "numeros": [
         {
           "num": 1,
-          "cover": "https://gaceta.rsme.es/portadas/p_V6N1.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V6N1.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=5",
-          "page_start": 1,
-          "page_end": 270
+          "pagina_inicio": 1,
+          "pagina_fin": 270
         },
         {
           "num": 2,
-          "cover": "https://gaceta.rsme.es/portadas/p_V6N2.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V6N2.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=20",
           "sup": "https://gaceta.rsme.es/versuplemento.php?id=21",
-          "page_start": 271,
-          "page_end": 518
+          "pagina_inicio": 271,
+          "pagina_fin": 518
         },
         {
           "num": 3,
-          "cover": "https://gaceta.rsme.es/portadas/p_V6N3.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V6N3.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=4",
-          "page_start": 519,
-          "page_end": 772
+          "pagina_inicio": 519,
+          "pagina_fin": 772
         }
       ]
     },
     {
       "num": 7,
-      "year": 2004,
-      "issues": [
+      "año": 2004,
+      "numeros": [
         {
           "num": 1,
-          "cover": "https://gaceta.rsme.es/portadas/p_V7N1.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V7N1.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=47",
-          "page_start": 1,
-          "page_end": 298
+          "pagina_inicio": 1,
+          "pagina_fin": 298
         },
         {
           "num": 2,
-          "cover": "https://gaceta.rsme.es/portadas/p_V7N2.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V7N2.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=48",
-          "page_start": 299,
-          "page_end": 582
+          "pagina_inicio": 299,
+          "pagina_fin": 582
         },
         {
           "num": 3,
-          "cover": "https://gaceta.rsme.es/portadas/p_V7N3.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V7N3.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=55",
           "sup": "https://gaceta.rsme.es/versuplemento.php?id=56",
-          "page_start": 585,
-          "page_end": 810
+          "pagina_inicio": 585,
+          "pagina_fin": 810
         }
       ]
     },
     {
       "num": 8,
-      "year": 2005,
-      "issues": [
+      "año": 2005,
+      "numeros": [
         {
           "num": 1,
-          "cover": "https://gaceta.rsme.es/portadas/p_V8N1.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V8N1.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=57",
-          "page_start": 1,
-          "page_end": 293
+          "pagina_inicio": 1,
+          "pagina_fin": 293
         },
         {
           "num": 2,
-          "cover": "https://gaceta.rsme.es/portadas/p_V8N2.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V8N2.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=58",
-          "page_start": 303,
-          "page_end": 547
+          "pagina_inicio": 303,
+          "pagina_fin": 547
         },
         {
           "num": 3,
-          "cover": "https://gaceta.rsme.es/portadas/p_V8N3.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V8N3.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=59",
-          "page_start": 557,
-          "page_end": 868
+          "pagina_inicio": 557,
+          "pagina_fin": 868
         }
       ]
     },
     {
       "num": 9,
-      "year": 2006,
-      "issues": [
+      "año": 2006,
+      "numeros": [
         {
           "num": 1,
-          "cover": "https://gaceta.rsme.es/portadas/p_V9N1.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V9N1.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=61",
-          "page_start": 1,
-          "page_end": 265
+          "pagina_inicio": 1,
+          "pagina_fin": 265
         },
         {
           "num": 2,
-          "cover": "https://gaceta.rsme.es/portadas/p_V9N2.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V9N2.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=62",
-          "page_start": 279,
-          "page_end": 585
+          "pagina_inicio": 279,
+          "pagina_fin": 585
         },
         {
           "num": 3,
-          "cover": "https://gaceta.rsme.es/portadas/p_V9N3.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V9N3.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=63",
-          "page_start": 595,
-          "page_end": 817
+          "pagina_inicio": 595,
+          "pagina_fin": 817
         }
       ]
     },
     {
       "num": 10,
-      "year": 2007,
-      "issues": [
+      "año": 2007,
+      "numeros": [
         {
           "num": 1,
-          "cover": "https://gaceta.rsme.es/portadas/p_V10N1.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V10N1.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=64",
-          "page_start": 1,
-          "page_end": 260
+          "pagina_inicio": 1,
+          "pagina_fin": 260
         },
         {
           "num": 2,
-          "cover": "https://gaceta.rsme.es/portadas/p_V10N2.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V10N2.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=66",
-          "page_start": 269,
-          "page_end": 543
+          "pagina_inicio": 269,
+          "pagina_fin": 543
         },
         {
           "num": 3,
-          "cover": "https://gaceta.rsme.es/portadas/p_V10N3.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V10N3.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=67",
-          "page_start": 553,
-          "page_end": 779
+          "pagina_inicio": 553,
+          "pagina_fin": 779
         }
       ]
     },
     {
       "num": 11,
-      "year": 2008,
-      "issues": [
+      "año": 2008,
+      "numeros": [
         {
           "num": 1,
-          "cover": "https://gaceta.rsme.es/portadas/p_V11N1.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V11N1.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=68",
-          "page_start": 1,
-          "page_end": 216
+          "pagina_inicio": 1,
+          "pagina_fin": 216
         },
         {
           "num": 2,
-          "cover": "https://gaceta.rsme.es/portadas/p_V11N2.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V11N2.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=69",
-          "page_start": 217,
-          "page_end": 400
+          "pagina_inicio": 217,
+          "pagina_fin": 400
         },
         {
           "num": 3,
-          "cover": "https://gaceta.rsme.es/portadas/p_V11N3.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V11N3.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=71",
-          "page_start": 401,
-          "page_end": 596
+          "pagina_inicio": 401,
+          "pagina_fin": 596
         },
         {
           "num": 4,
-          "cover": "https://gaceta.rsme.es/portadas/p_V11N4.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V11N4.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=72",
-          "page_start": 597,
-          "page_end": 812
+          "pagina_inicio": 597,
+          "pagina_fin": 812
         }
       ]
     },
     {
       "num": 12,
-      "year": 2009,
-      "issues": [
+      "año": 2009,
+      "numeros": [
         {
           "num": 1,
-          "cover": "https://gaceta.rsme.es/portadas/p_V12N1.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V12N1.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=73",
-          "page_start": 1,
-          "page_end": 216
+          "pagina_inicio": 1,
+          "pagina_fin": 216
         },
         {
           "num": 2,
-          "cover": "https://gaceta.rsme.es/portadas/p_V12N2.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V12N2.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=74",
-          "page_start": 217,
-          "page_end": 414
+          "pagina_inicio": 217,
+          "pagina_fin": 414
         },
         {
           "num": 3,
-          "cover": "https://gaceta.rsme.es/portadas/p_V12N3.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V12N3.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=75",
-          "page_start": 415,
-          "page_end": 608
+          "pagina_inicio": 415,
+          "pagina_fin": 608
         },
         {
           "num": 4,
-          "cover": "https://gaceta.rsme.es/portadas/p_V12N4.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V12N4.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=76",
-          "page_start": 609,
-          "page_end": 800
+          "pagina_inicio": 609,
+          "pagina_fin": 800
         }
       ]
     },
     {
       "num": 13,
-      "year": 2010,
-      "issues": [
+      "año": 2010,
+      "numeros": [
         {
           "num": 1,
-          "cover": "https://gaceta.rsme.es/portadas/p_V13N1.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V13N1.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=77",
-          "page_start": 1,
-          "page_end": 198
+          "pagina_inicio": 1,
+          "pagina_fin": 198
         },
         {
           "num": 2,
-          "cover": "https://gaceta.rsme.es/portadas/p_V13N2.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V13N2.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=78",
-          "page_start": 199,
-          "page_end": 400
+          "pagina_inicio": 199,
+          "pagina_fin": 400
         },
         {
           "num": 3,
-          "cover": "https://gaceta.rsme.es/portadas/p_V13N3.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V13N3.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=79",
-          "page_start": 401,
-          "page_end": 598
+          "pagina_inicio": 401,
+          "pagina_fin": 598
         },
         {
           "num": 4,
-          "cover": "https://gaceta.rsme.es/portadas/p_V13N4.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V13N4.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=80",
-          "page_start": 599,
-          "page_end": 818
+          "pagina_inicio": 599,
+          "pagina_fin": 818
         }
       ]
     },
     {
       "num": 14,
-      "year": 2011,
-      "issues": [
+      "año": 2011,
+      "numeros": [
         {
           "num": 1,
-          "cover": "https://gaceta.rsme.es/portadas/p_V14N1.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V14N1.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=81",
-          "page_start": 1,
-          "page_end": 204
+          "pagina_inicio": 1,
+          "pagina_fin": 204
         },
         {
           "num": 2,
-          "cover": "https://gaceta.rsme.es/portadas/p_V14N2.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V14N2.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=82",
-          "page_start": 205,
-          "page_end": 398
+          "pagina_inicio": 205,
+          "pagina_fin": 398
         },
         {
           "num": 3,
-          "cover": "https://gaceta.rsme.es/portadas/p_V14N3.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V14N3.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=83",
-          "page_start": 399,
-          "page_end": 606
+          "pagina_inicio": 399,
+          "pagina_fin": 606
         },
         {
           "num": 4,
-          "cover": "https://gaceta.rsme.es/portadas/p_V14N4.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V14N4.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=84",
-          "page_start": 607,
-          "page_end": 816
+          "pagina_inicio": 607,
+          "pagina_fin": 816
         }
       ]
     },
     {
       "num": 15,
-      "year": 2012,
-      "issues": [
+      "año": 2012,
+      "numeros": [
         {
           "num": 1,
-          "cover": "https://gaceta.rsme.es/portadas/p_V15N1.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V15N1.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=85",
           "sup": "https://gaceta.rsme.es/versuplemento.php?id=86",
-          "page_start": 1,
-          "page_end": 228
+          "pagina_inicio": 1,
+          "pagina_fin": 228
         },
         {
           "num": 2,
-          "cover": "https://gaceta.rsme.es/portadas/p_V15N2.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V15N2.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=87",
-          "page_start": 229,
-          "page_end": 410
+          "pagina_inicio": 229,
+          "pagina_fin": 410
         },
         {
           "num": 3,
-          "cover": "https://gaceta.rsme.es/portadas/p_V15N3.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V15N3.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=88",
-          "page_start": 411,
-          "page_end": 596
+          "pagina_inicio": 411,
+          "pagina_fin": 596
         },
         {
           "num": 4,
-          "cover": "https://gaceta.rsme.es/portadas/p_V15N4.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V15N4.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=89",
-          "page_start": 597,
-          "page_end": 794
+          "pagina_inicio": 597,
+          "pagina_fin": 794
         }
       ]
     },
     {
       "num": 16,
-      "year": 2013,
-      "issues": [
+      "año": 2013,
+      "numeros": [
         {
           "num": 1,
-          "cover": "https://gaceta.rsme.es/portadas/p_V16N1.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V16N1.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=90",
-          "page_start": 1,
-          "page_end": 200
+          "pagina_inicio": 1,
+          "pagina_fin": 200
         },
         {
           "num": 2,
-          "cover": "https://gaceta.rsme.es/portadas/p_V16N2.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V16N2.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=91",
-          "page_start": 201,
-          "page_end": 400
+          "pagina_inicio": 201,
+          "pagina_fin": 400
         },
         {
           "num": 3,
-          "cover": "https://gaceta.rsme.es/portadas/p_V16N3.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V16N3.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=92",
-          "page_start": 401,
-          "page_end": 600
+          "pagina_inicio": 401,
+          "pagina_fin": 600
         },
         {
           "num": 4,
-          "cover": "https://gaceta.rsme.es/portadas/p_V16N4.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V16N4.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=93",
-          "page_start": 601,
-          "page_end": 804
+          "pagina_inicio": 601,
+          "pagina_fin": 804
         }
       ]
     },
     {
       "num": 17,
-      "year": 2014,
-      "issues": [
+      "año": 2014,
+      "numeros": [
         {
           "num": 1,
-          "cover": "https://gaceta.rsme.es/portadas/p_V17N1.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V17N1.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=94",
-          "page_start": 1,
-          "page_end": 198
+          "pagina_inicio": 1,
+          "pagina_fin": 198
         },
         {
           "num": 2,
-          "cover": "https://gaceta.rsme.es/portadas/p_V17N2.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V17N2.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=95",
-          "page_start": 199,
-          "page_end": 400
+          "pagina_inicio": 199,
+          "pagina_fin": 400
         },
         {
           "num": 3,
-          "cover": "https://gaceta.rsme.es/portadas/p_V17N3.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V17N3.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=96",
-          "page_start": 401,
-          "page_end": 606
+          "pagina_inicio": 401,
+          "pagina_fin": 606
         },
         {
           "num": 4,
-          "cover": "https://gaceta.rsme.es/portadas/p_V17N4.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V17N4.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=97",
-          "page_start": 607,
-          "page_end": 814
+          "pagina_inicio": 607,
+          "pagina_fin": 814
         }
       ]
     },
     {
       "num": 18,
-      "year": 2015,
-      "issues": [
+      "año": 2015,
+      "numeros": [
         {
           "num": 1,
-          "cover": "https://gaceta.rsme.es/portadas/p_V18N1.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V18N1.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=98",
-          "page_start": 1,
-          "page_end": 214
+          "pagina_inicio": 1,
+          "pagina_fin": 214
         },
         {
           "num": 2,
-          "cover": "https://gaceta.rsme.es/portadas/p_V18N2.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V18N2.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=99",
-          "page_start": 215,
-          "page_end": 432
+          "pagina_inicio": 215,
+          "pagina_fin": 432
         },
         {
           "num": 3,
-          "cover": "https://gaceta.rsme.es/portadas/p_V18N3.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V18N3.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=100",
-          "page_start": 433,
-          "page_end": 656
+          "pagina_inicio": 433,
+          "pagina_fin": 656
         }
       ]
     },
     {
       "num": 19,
-      "year": 2016,
-      "issues": [
+      "año": 2016,
+      "numeros": [
         {
           "num": 1,
-          "cover": "https://gaceta.rsme.es/portadas/p_V19N1.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V19N1.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=101",
-          "page_start": 1,
-          "page_end": 200
+          "pagina_inicio": 1,
+          "pagina_fin": 200
         },
         {
           "num": 2,
-          "cover": "https://gaceta.rsme.es/portadas/p_V19N2.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V19N2.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=102",
-          "page_start": 201,
-          "page_end": 432
+          "pagina_inicio": 201,
+          "pagina_fin": 432
         },
         {
           "num": 3,
-          "cover": "https://gaceta.rsme.es/portadas/p_V19N3.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V19N3.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=103",
-          "page_start": 433,
-          "page_end": 674
+          "pagina_inicio": 433,
+          "pagina_fin": 674
         }
       ]
     },
     {
       "num": 20,
-      "year": 2017,
-      "issues": [
+      "año": 2017,
+      "numeros": [
         {
           "num": 1,
-          "cover": "https://gaceta.rsme.es/portadas/p_V20N1.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V20N1.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=104",
-          "page_start": 1,
-          "page_end": 226
+          "pagina_inicio": 1,
+          "pagina_fin": 226
         },
         {
           "num": 2,
-          "cover": "https://gaceta.rsme.es/portadas/p_V20N2.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V20N2.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=105",
-          "page_start": 227,
-          "page_end": 444
+          "pagina_inicio": 227,
+          "pagina_fin": 444
         },
         {
           "num": 3,
-          "cover": "https://gaceta.rsme.es/portadas/p_V20N3.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V20N3.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=106",
-          "page_start": 445,
-          "page_end": 672
+          "pagina_inicio": 445,
+          "pagina_fin": 672
         }
       ]
     },
     {
       "num": 21,
-      "year": 2018,
-      "issues": [
+      "año": 2018,
+      "numeros": [
         {
           "num": 1,
-          "cover": "https://gaceta.rsme.es/portadas/p_V21N1.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V21N1.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=107",
-          "page_start": 1,
-          "page_end": 222
+          "pagina_inicio": 1,
+          "pagina_fin": 222
         },
         {
           "num": 2,
-          "cover": "https://gaceta.rsme.es/portadas/p_V21N2.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V21N2.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=108",
-          "page_start": 223,
-          "page_end": 438
+          "pagina_inicio": 223,
+          "pagina_fin": 438
         },
         {
           "num": 3,
-          "cover": "https://gaceta.rsme.es/portadas/p_V21N3.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V21N3.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=109",
-          "page_start": 439,
-          "page_end": 662
+          "pagina_inicio": 439,
+          "pagina_fin": 662
         }
       ]
     },
     {
       "num": 22,
-      "year": 2019,
-      "issues": [
+      "año": 2019,
+      "numeros": [
         {
           "num": 1,
-          "cover": "https://gaceta.rsme.es/portadas/p_V22N1.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V22N1.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=110",
-          "page_start": 1,
-          "page_end": 200
+          "pagina_inicio": 1,
+          "pagina_fin": 200
         },
         {
           "num": 2,
-          "cover": "https://gaceta.rsme.es/portadas/p_V22N2.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V22N2.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=111",
-          "page_start": 201,
-          "page_end": 426
+          "pagina_inicio": 201,
+          "pagina_fin": 426
         },
         {
           "num": 3,
-          "cover": "https://gaceta.rsme.es/portadas/p_V22N3.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V22N3.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=112",
-          "page_start": 427,
-          "page_end": 648
+          "pagina_inicio": 427,
+          "pagina_fin": 648
         }
       ]
     },
     {
       "num": 23,
-      "year": 2020,
-      "issues": [
+      "año": 2020,
+      "numeros": [
         {
           "num": 1,
-          "cover": "https://gaceta.rsme.es/portadas/p_V23N1.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V23N1.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=113",
-          "page_start": 1,
-          "page_end": 216
+          "pagina_inicio": 1,
+          "pagina_fin": 216
         },
         {
           "num": 2,
-          "cover": "https://gaceta.rsme.es/portadas/p_V23N2.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V23N2.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=114",
-          "page_start": 217,
-          "page_end": 446
+          "pagina_inicio": 217,
+          "pagina_fin": 446
         },
         {
           "num": 3,
-          "cover": "https://gaceta.rsme.es/portadas/p_V23N3.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V23N3.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=115",
-          "page_start": 447,
-          "page_end": 676
+          "pagina_inicio": 447,
+          "pagina_fin": 676
         }
       ]
     },
     {
       "num": 24,
-      "year": 2021,
-      "issues": [
+      "año": 2021,
+      "numeros": [
         {
           "num": 1,
-          "cover": "https://gaceta.rsme.es/portadas/p_V24N1.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V24N1.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=116",
-          "page_start": 1,
-          "page_end": 226
+          "pagina_inicio": 1,
+          "pagina_fin": 226
         },
         {
           "num": 2,
-          "cover": "https://gaceta.rsme.es/portadas/p_V24N2.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V24N2.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=117",
-          "page_start": 227,
-          "page_end": 440
+          "pagina_inicio": 227,
+          "pagina_fin": 440
         },
         {
           "num": 3,
-          "cover": "https://gaceta.rsme.es/portadas/p_V24N3.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V24N3.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=118",
-          "page_start": 441,
-          "page_end": 662
+          "pagina_inicio": 441,
+          "pagina_fin": 662
         }
       ]
     },
     {
       "num": 25,
-      "year": 2022,
-      "issues": [
+      "año": 2022,
+      "numeros": [
         {
           "num": 1,
-          "cover": "https://gaceta.rsme.es/portadas/p_V25N1.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V25N1.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=119",
-          "page_start": 1,
-          "page_end": 210
+          "pagina_inicio": 1,
+          "pagina_fin": 210
         },
         {
           "num": 2,
-          "cover": "https://gaceta.rsme.es/portadas/p_V25N2.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V25N2.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=120",
-          "page_start": 211,
-          "page_end": 424
+          "pagina_inicio": 211,
+          "pagina_fin": 424
         },
         {
           "num": 3,
-          "cover": "https://gaceta.rsme.es/portadas/p_V25N3.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V25N3.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=121",
-          "page_start": 425,
-          "page_end": 652
+          "pagina_inicio": 425,
+          "pagina_fin": 652
         }
       ]
     },
     {
       "num": 26,
-      "year": 2023,
-      "issues": [
+      "año": 2023,
+      "numeros": [
         {
           "num": 1,
-          "cover": "https://gaceta.rsme.es/portadas/p_V26N1.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V26N1.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=122",
-          "page_start": 1,
-          "page_end": 226
+          "pagina_inicio": 1,
+          "pagina_fin": 226
         },
         {
           "num": 2,
-          "cover": "https://gaceta.rsme.es/portadas/p_V26N2.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V26N2.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=123",
-          "page_start": 227,
-          "page_end": 412
+          "pagina_inicio": 227,
+          "pagina_fin": 412
         },
         {
           "num": 3,
-          "cover": "https://gaceta.rsme.es/portadas/p_V26N3.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V26N3.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=124",
-          "page_start": 413,
-          "page_end": 598
+          "pagina_inicio": 413,
+          "pagina_fin": 598
         }
       ]
     },
     {
       "num": 27,
-      "year": 2024,
-      "issues": [
+      "año": 2024,
+      "numeros": [
         {
           "num": 1,
-          "cover": "https://gaceta.rsme.es/portadas/p_V27N1.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V27N1.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=125",
-          "page_start": 1,
-          "page_end": 206
+          "pagina_inicio": 1,
+          "pagina_fin": 206
         },
         {
           "num": 2,
-          "cover": "https://gaceta.rsme.es/portadas/p_V27N2.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V27N2.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=126",
-          "page_start": 207,
-          "page_end": 398
+          "pagina_inicio": 207,
+          "pagina_fin": 398
         },
         {
           "num": 3,
-          "cover": "https://gaceta.rsme.es/portadas/p_V27N3.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V27N3.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=127",
-          "page_start": 399,
-          "page_end": 618
+          "pagina_inicio": 399,
+          "pagina_fin": 618
         }
       ]
     },
     {
       "num": 28,
-      "year": 2025,
-      "issues": [
+      "año": 2025,
+      "numeros": [
         {
           "num": 1,
-          "cover": "https://gaceta.rsme.es/portadas/p_V28N1.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V28N1.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=128",
-          "page_start": 1,
-          "page_end": 202
+          "pagina_inicio": 1,
+          "pagina_fin": 202
         },
         {
           "num": 2,
-          "cover": "https://gaceta.rsme.es/portadas/p_V28N2.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V28N2.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=129",
-          "page_start": 203,
-          "page_end": 402
+          "pagina_inicio": 203,
+          "pagina_fin": 402
         },
         {
           "num": 3,
-          "cover": "https://gaceta.rsme.es/portadas/p_V28N3.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V28N3.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=130",
-          "page_start": 403,
-          "page_end": 620
+          "pagina_inicio": 403,
+          "pagina_fin": 620
         }
       ]
     },
     {
       "num": 29,
-      "year": 2026,
-      "issues": [
+      "año": 2026,
+      "numeros": [
         {
           "num": 1,
-          "cover": "https://gaceta.rsme.es/portadas/p_V29N1.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V29N1.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=131",
-          "page_start": 1,
-          "page_end": 166
+          "pagina_inicio": 1,
+          "pagina_fin": 166
         },
         {
           "num": 2,
-          "cover": "https://gaceta.rsme.es/portadas/p_V29N2.jpg",
+          "portada": "https://gaceta.rsme.es/portadas/p_V29N2.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=132",
-          "page_start": 167,
-          "page_end": 356
+          "pagina_inicio": 167,
+          "pagina_fin": 356
         }
       ]
     }
