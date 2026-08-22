@@ -9,7 +9,214 @@
           "portada": "https://gaceta.rsme.es/portadas/p_V1N1.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=49",
           "pagina_inicio": 1,
-          "pagina_fin": 148
+          "pagina_fin": 148,
+          "articulos": [
+            {
+              "nombre": "Editorial",
+              "articulos": [
+                {
+                  "nombre": "Editorial",
+                  "autor": "Redacción de La Gaceta",
+                  "id": 297,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=297",
+                  "pagina_inicio": 5,
+                  "pagina_fin": 5
+                },
+                {
+                  "nombre": "Carta del Presidente de la Real Sociedad Matemática Española",
+                  "autor": "Antonio Martínez Naveira",
+                  "id": 298,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=298",
+                  "pagina_inicio": 7,
+                  "pagina_fin": 9
+                }
+              ]
+            },
+            {
+              "nombre": "Artículos",
+              "articulos": [
+                {
+                  "nombre": "Números, átomos y estrellas",
+                  "autor": "Charles Fefferman",
+                  "id": 299,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=299",
+                  "pagina_inicio": 11,
+                  "pagina_fin": 36
+                },
+                {
+                  "nombre": "Fractales de Riemann: números y figuras",
+                  "autor": "Fernando Chamizo y Antonio Córdoba",
+                  "id": 300,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=300",
+                  "pagina_inicio": 37,
+                  "pagina_fin": 47
+                },
+                {
+                  "nombre": "Escuchando a Luis A. Santaló",
+                  "autor": "Miguel de Guzmán",
+                  "id": 301,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=301",
+                  "pagina_inicio": 48,
+                  "pagina_fin": 55
+                },
+                {
+                  "nombre": "El número pi",
+                  "autor": "Wislawa Szymborska",
+                  "id": 302,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=302",
+                  "pagina_inicio": 56,
+                  "pagina_fin": 57
+                }
+              ]
+            },
+            {
+              "nombre": "Historia",
+              "articulos": [
+                {
+                  "nombre": "Sobre la historia del concepto topológico de curva",
+                  "autor": "Juan Tarrés Freixenet",
+                  "id": 303,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=303",
+                  "pagina_inicio": 59,
+                  "pagina_fin": 77
+                }
+              ]
+            },
+            {
+              "nombre": "Educación",
+              "articulos": [
+                {
+                  "nombre": "Reflexiones sobre el aprendizaje y enseñanza de la matemática",
+                  "autor": "Alberto P. Calderón",
+                  "id": 304,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=304",
+                  "pagina_inicio": 79,
+                  "pagina_fin": 88
+                }
+              ]
+            },
+            {
+              "nombre": "La Olimpiada Matemática",
+              "articulos": [
+                {
+                  "nombre": "Mi experiencia en la olimpiada matemática",
+                  "autor": "Ricardo Pérez Marco",
+                  "id": 305,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=305"
+                },
+                {
+                  "nombre": "Problemas de la XXXIV Olimpiada Matemática Española",
+                  "id": 306,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=306",
+                  "pagina_inicio": 89,
+                  "pagina_fin": 95
+                }
+              ]
+            },
+            {
+              "nombre": "Nombramientos",
+              "articulos": [
+                {
+                  "nombre": "Nombramientos",
+                  "autor": "Bernardo López Melero",
+                  "id": 307,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=307",
+                  "pagina_inicio": 97,
+                  "pagina_fin": 98
+                }
+              ]
+            },
+            {
+              "nombre": "Preguntas en busca de una respuesta",
+              "articulos": [
+                {
+                  "nombre": "Preguntas en busca de una respuesta",
+                  "autor": "Antonio Sánchez Calle",
+                  "id": 308,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=308",
+                  "pagina_inicio": 99,
+                  "pagina_fin": 99
+                }
+              ]
+            },
+            {
+              "nombre": "Carta desde los Estados Unidos",
+              "articulos": [
+                {
+                  "nombre": "Carta desde los Estados Unidos",
+                  "autor": "Davin Drasin",
+                  "id": 309,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=309",
+                  "pagina_inicio": 101,
+                  "pagina_fin": 103
+                }
+              ]
+            },
+            {
+              "nombre": "La Columna de Matemática Computacional",
+              "articulos": [
+                {
+                  "nombre": "El número de raíces reales de un polinomio",
+                  "autor": "Tomás Recio",
+                  "id": 310,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=310",
+                  "pagina_inicio": 105,
+                  "pagina_fin": 111
+                }
+              ]
+            },
+            {
+              "nombre": "Programas informáticos en Matemáticas",
+              "articulos": [
+                {
+                  "nombre": "Maple en la enseñanza secundaria",
+                  "autor": "Miguel Delgado Pineda",
+                  "id": 311,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=311"
+                },
+                {
+                  "nombre": "Maple en la enseñanza universitaria",
+                  "autor": "José L. Vicente",
+                  "id": 312,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=312"
+                },
+                {
+                  "nombre": "Aplicación de Maple a la investigación",
+                  "autor": "Ignacio Luengo Velasco",
+                  "id": 313,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=313",
+                  "pagina_inicio": 113,
+                  "pagina_fin": 128
+                }
+              ]
+            },
+            {
+              "nombre": "Mirando hacia atrás",
+              "articulos": [
+                {
+                  "nombre": "¡Sursum Corda!",
+                  "autor": "Manuel de León",
+                  "id": 315,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=315",
+                  "pagina_inicio": 129,
+                  "pagina_fin": 134
+                }
+              ]
+            },
+            {
+              "nombre": "En diálogo con la Academia",
+              "articulos": [
+                {
+                  "nombre": "Presentación de una actitud",
+                  "autor": "Pedro Ciruelo",
+                  "id": 316,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=316",
+                  "pagina_inicio": 135,
+                  "pagina_fin": 137
+                }
+              ]
+            }
+          ]
         },
         {
           "num": 2,
@@ -63,7 +270,134 @@
           "portada": "https://gaceta.rsme.es/portadas/p_V3N1.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=27",
           "pagina_inicio": 1,
-          "pagina_fin": 158
+          "pagina_fin": 158,
+          "articulos": [
+            {
+              "nombre": "Acerca de la portada",
+              "autor": "Redacción de La Gaceta",
+              "descripcion": "El contorno de este amonites (Amaltheus margaritatus) es una curva, una espiral lograrítmica o equiangular (el radio corta a la espiral en un ángulo constante), que se ajusta exactamente a una sucesión de rectángulos áureos encajados."
+            },
+            {
+              "nombre": "Editorial",
+              "articulos": [
+                {
+                  "nombre": "Editorial",
+                  "autor": "Redacción de La Gaceta",
+                  "id": 275,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=275",
+                  "pagina_inicio": 5,
+                  "pagina_fin": 8
+                }
+              ]
+            },
+            {
+              "nombre": "Artículos",
+              "articulos": [
+                {
+                  "nombre": "Las Matemáticas y los objetivos del año 2000. Un llamamiento a los matemáticos españoles",
+                  "autor": "Juan Luis Vázquez",
+                  "id": 276,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=276",
+                  "pagina_inicio": 9,
+                  "pagina_fin": 22
+                },
+                {
+                  "nombre": "Las Matemáticas ante el cambio de milenio",
+                  "autor": "Phillip A. Griffiths",
+                  "id": 277,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=277",
+                  "pagina_inicio": 23,
+                  "pagina_fin": 41
+                },
+                {
+                  "nombre": "Una reflexión sobre los estudios de matemáticas y sus perspectivas",
+                  "autor": "Joaquim Bruna",
+                  "id": 278,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=278",
+                  "pagina_inicio": 43,
+                  "pagina_fin": 64
+                },
+                {
+                  "nombre": "Actos en el Congreso",
+                  "articulos": [
+                    {
+                      "nombre": "Jornada matemática",
+                      "autor": "Redacción de La Gaceta",
+                      "id": 279,
+                      "link": "https://gaceta.rsme.es/abrir.php?id=279"
+                    },
+                    {
+                      "nombre": "Acuerdo sobre el Año Mundial de las Matemáticas 2000",
+                      "autor": "Redacción de La Gaceta",
+                      "id": 280,
+                      "link": "https://gaceta.rsme.es/abrir.php?id=280",
+                      "pagina_inicio": 67,
+                      "pagina_fin": 85
+                    }
+                  ]
+                },
+                {
+                  "nombre": "Actos en el Senado",
+                  "articulos": [
+                    {
+                      "nombre": "Las matemáticas y las medidas",
+                      "autor": "Santiago Garma",
+                      "id": 281,
+                      "link": "https://gaceta.rsme.es/abrir.php?id=281"
+                    },
+                    {
+                      "nombre": "Estudio introductorio al «Libro de los Reloges Solares» de Pedro Roiz, publicado en Valencia en 1575",
+                      "autor": "Joan Girbau",
+                      "id": 282,
+                      "link": "https://gaceta.rsme.es/abrir.php?id=282",
+                      "pagina_inicio": 87,
+                      "pagina_fin": 107
+                    },
+                    {
+                      "nombre": "Bibliografía",
+                      "autor": "Redacción de La Gaceta",
+                      "id": 283,
+                      "link": "https://gaceta.rsme.es/abrir.php?id=283",
+                      "pagina_inicio": 109,
+                      "pagina_fin": 110
+                    },
+                    {
+                      "nombre": "Reunión de Decanos y Directores de Departamentos de Matemáticas en Santiago de Compostela. 18 y 19 de febrero de 2000",
+                      "autor": "Enrique Macías Virgós",
+                      "id": 284,
+                      "link": "https://gaceta.rsme.es/abrir.php?id=284",
+                      "pagina_inicio": 111,
+                      "pagina_fin": 116
+                    },
+                    {
+                      "nombre": "Perspectivas sobre el bachillerato: pasado y futuro",
+                      "autor": "Florencio Villarroya",
+                      "id": 285,
+                      "link": "https://gaceta.rsme.es/abrir.php?id=285",
+                      "pagina_inicio": 117,
+                      "pagina_fin": 124
+                    },
+                    {
+                      "nombre": "Congreso RSME2000: un buen comienzo",
+                      "autor": "Carlos Andradas",
+                      "id": 286,
+                      "link": "https://gaceta.rsme.es/abrir.php?id=286",
+                      "pagina_inicio": 125,
+                      "pagina_fin": 133
+                    },
+                    {
+                      "nombre": "EMIS – Información electrónica y comunicación en Matemáticas",
+                      "autor": "Bernd Wegner y Salvador Segura",
+                      "id": 287,
+                      "link": "https://gaceta.rsme.es/abrir.php?id=287",
+                      "pagina_inicio": 135,
+                      "pagina_fin": 142
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
         },
         {
           "num": 2,
@@ -152,7 +486,165 @@
           "link": "https://gaceta.rsme.es/vernumero.php?id=20",
           "sup": "https://gaceta.rsme.es/versuplemento.php?id=21",
           "pagina_inicio": 271,
-          "pagina_fin": 518
+          "pagina_fin": 518,
+          "articulos": [
+            {
+              "nombre": "Acerca de la portada",
+              "autor": "Redacción de La Gaceta",
+              "link": "https://gaceta.rsme.es/acercade/acercadeV6N2.pdf"
+            },
+            {
+              "nombre": "Editorial",
+              "articulos": [
+                {
+                  "nombre": "6 años de La Gaceta (1998-2003)",
+                  "autor": "Manuel de León",
+                  "id": 66,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=66",
+                  "pagina_inicio": 275,
+                  "pagina_fin": 277
+                },
+                {
+                  "nombre": "Debate: la integración de los estudios de Matemáticas en España en el Espacio Europeo de Educación Superior",
+                  "autor": "Tomás Recio",
+                  "id": 131,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=131",
+                  "pagina_inicio": 279,
+                  "pagina_fin": 285
+                },
+                {
+                  "nombre": "Los nuevos currícula de Matemáticas en la Enseñanza Secundaria",
+                  "autor": "R. Rodríguez del Río y E. Zuazua",
+                  "id": 132,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=132",
+                  "pagina_inicio": 287,
+                  "pagina_fin": 288
+                }
+              ]
+            },
+            {
+              "nombre": "Reseña de libros y revistas",
+              "articulos": [
+                {
+                  "nombre": "Serie: Aulas de verano y conocimiento educativo",
+                  "autor": "Mónika Sánchez Martínez",
+                  "id": 137,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=137"
+                },
+                {
+                  "nombre": "Dynamic Topology (Gordon Whyburn y Edwin Duda)",
+                  "autor": "J. M. Almira",
+                  "id": 747,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=747"
+                },
+                {
+                  "nombre": "Topological Invariantes of the Complement to Arrangements of Rational Plane Curves (José Ignacio Cogollugo Agustín)",
+                  "id": 748,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=748",
+                  "pagina_inicio": 405,
+                  "pagina_fin": 408
+                }
+              ]
+            },
+            {
+              "nombre": "Suplemento de este número:",
+              "articulos": [
+                {
+                  "nombre": "La integración de los estudios de Matemáticas en España en el espacio europeo de educación superior",
+                  "articulos": []
+                }
+              ]
+            },
+            {
+              "nombre": "Artículos",
+              "articulos": [
+                {
+                  "nombre": "La publicación electrónica de la investigación matemática: apuntes para un debate sobre su economía y sociología",
+                  "autor": "Rafael de la Llave",
+                  "id": 133,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=133",
+                  "pagina_inicio": 307,
+                  "pagina_fin": 350
+                },
+                {
+                  "nombre": "Un gran proyecto de cooperación internacional: la Biblioteca Digital de Matemáticas",
+                  "autor": "Enrique Macias-Virgós",
+                  "id": 134,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=134",
+                  "pagina_inicio": 351,
+                  "pagina_fin": 366
+                },
+                {
+                  "nombre": "De Hilbert a los Problemas del Milenio",
+                  "autor": "Manuel Castellet",
+                  "id": 135,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=135",
+                  "pagina_inicio": 367,
+                  "pagina_fin": 376
+                },
+                {
+                  "nombre": "Sobre aproximación con polinomios de coeficientes enteros",
+                  "autor": "J. M. Almira y N. Del Toro",
+                  "id": 136,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=136",
+                  "pagina_inicio": 377,
+                  "pagina_fin": 403
+                }
+              ]
+            },
+            {
+              "nombre": "Historia",
+              "articulos": [
+                {
+                  "nombre": "Función",
+                  "autor": "N. N. Luzin",
+                  "id": 138,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=138",
+                  "pagina_inicio": 413,
+                  "pagina_fin": 436
+                }
+              ]
+            },
+            {
+              "nombre": "Educación",
+              "articulos": [
+                {
+                  "nombre": "Matemáticas para no desafinar",
+                  "autor": "Javier Peralta",
+                  "id": 139,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=139",
+                  "pagina_inicio": 437,
+                  "pagina_fin": 456
+                }
+              ]
+            },
+            {
+              "nombre": "La Olimpiada Matemática",
+              "articulos": [
+                {
+                  "nombre": "XXXIX Olimpiada Matemática Española",
+                  "autor": "María Gaspar",
+                  "id": 140,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=140",
+                  "pagina_inicio": 461,
+                  "pagina_fin": 468
+                }
+              ]
+            },
+            {
+              "nombre": "La Columna de Matemática Computacional",
+              "articulos": [
+                {
+                  "nombre": "Estereología: punto de encuentro de la geometría integral, la probabilidad y la estadística. En memoria del profesor Luis A. Santaló (1911-2001)",
+                  "autor": "Luis M. Cruz-Orive",
+                  "id": 156,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=156",
+                  "pagina_inicio": 469,
+                  "pagina_fin": 513
+                }
+              ]
+            }
+          ]
         },
         {
           "num": 3,
@@ -817,7 +1309,185 @@
           "portada": "https://gaceta.rsme.es/portadas/p_V29N1.jpg",
           "link": "https://gaceta.rsme.es/vernumero.php?id=131",
           "pagina_inicio": 1,
-          "pagina_fin": 166
+          "pagina_fin": 166,
+          "articulos": [
+            {
+              "nombre": "Acerca de la portada",
+              "autor": "Redacción de La Gaceta",
+              "link": "https://gaceta.rsme.es/acercade/acercadeV29N1.pdf",
+              "descripcion": "El 17 de septiembre de 1826 nacía en Breselenz, una ciudad entonces del Reino de Hanóver, Georg Friedrich Bernhard Riemann. Cuando falleció, el 20 de julio de 1866, había desarrollado una plétora de conceptos, ideas y resultados que han influido profundamente en numerosos campos de las matemáticas y de la física: geometría riemanniana, tensor de curvatura de Riemann, integral de Riemann, superficies de Riemann, teorema de representación conforme de Riemann, hipótesis de Riemann sobre los ceros de la función ζ... de Riemann, etc.Es un ejercicio inútil decidir quiénes han sido los mejores matemáticos de la historia, pero probablemente Riemann estaría entre los cinco primeros que cualquiera nombraría. Era por ello obligado conmemorar el bicentenario de su nacimiento dedicándole las portadas de este volumen de La Gaceta. En la primera de ellas se muestra una foto, de autor desconocido, tomada alrededor de 1862. Apoyándonos en el muy recomendable artículo de MacTutor, https://mathshistory.st-andrews.ac.uk/Biographies/Riemann/, damos unos apuntes sobre la trayectoria matemática de Riemann.En 1846 Riemann se matriculó en la Universidad de Gotinga para estudiar teología pero, tras recibir clases de Gauss, se pasó a las matemáticas. En 1847 marcha a Berlín, donde estudió con Steiner, Jacobi, Dirichlet y Eisenstein. En 1849 regresó a Gotinga y en 1851 presentó su tesis doctoral, en la que estudiaba lo que hoy se llaman superficies de Riemann, introduciendo métodos topológicos en la teoría de funciones de variable compleja. Gauss, director de la tesis, escribió en su informe que Riemann demostraba tener «una originalidad esplendorosamente fértil». [...] DOI: 10.63427/VHLX8333"
+            },
+            {
+              "nombre": "Noticias de la Sociedad",
+              "articulos": [
+                {
+                  "nombre": "Carta de la Presidenta",
+                  "autor": "M. Victoria Otero Espinar",
+                  "id": 1932,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=1932",
+                  "pagina_inicio": 5,
+                  "pagina_fin": 8
+                },
+                {
+                  "nombre": "Carta del Tesorero",
+                  "autor": "Francisco Javier Fernández Fernández",
+                  "id": 1933,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=1933",
+                  "pagina_inicio": 9,
+                  "pagina_fin": 10
+                },
+                {
+                  "nombre": "Elecciones de Tesorero y Vocales de la Junta de Gobierno de la RSME en 2026",
+                  "autor": "Redacción de La Gaceta",
+                  "id": 1934,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=1934",
+                  "pagina_inicio": 11,
+                  "pagina_fin": 17
+                }
+              ]
+            },
+            {
+              "nombre": "Actualidad",
+              "articulos": [
+                {
+                  "nombre": "Tesis de matemáticas defendidas en España en el año 2025",
+                  "autor": "Redacción de La Gaceta",
+                  "id": 1935,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=1935",
+                  "pagina_inicio": 19,
+                  "pagina_fin": 34
+                }
+              ]
+            },
+            {
+              "nombre": "Artículos",
+              "articulos": [
+                {
+                  "nombre": "Campos vectoriales de sombras sobre superficies, II",
+                  "autor": "Eduardo Díaz-Miguel Bermúdez",
+                  "id": 1936,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=1936",
+                  "pagina_inicio": 35,
+                  "pagina_fin": 41
+                },
+                {
+                  "nombre": "Mecanismos de Watt y Chebyshev: origen de la aproximación uniforme",
+                  "autor": "Francisco Luquin",
+                  "id": 1938,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=1938",
+                  "pagina_inicio": 43,
+                  "pagina_fin": 67
+                },
+                {
+                  "nombre": "Otra forma de no generar números primos",
+                  "autor": "Juan Sabia",
+                  "id": 1940,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=1940",
+                  "pagina_inicio": 69,
+                  "pagina_fin": 72
+                },
+                {
+                  "nombre": "Extensiones de Cauchy-Kovalevskaya desde el análisis de Clifford",
+                  "autor": "José Luis Serrano Ricardo, Daniel Alfonso Santiesteban y Ricardo Abreu Blaya",
+                  "id": 1941,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=1941",
+                  "pagina_inicio": 73,
+                  "pagina_fin": 87
+                },
+                {
+                  "nombre": "Gauss y la regla de signos de Descartes: todo lo que hay que saber",
+                  "autor": "Pelegrí Viader",
+                  "id": 1942,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=1942",
+                  "pagina_inicio": 89,
+                  "pagina_fin": 101
+                }
+              ]
+            },
+            {
+              "nombre": "Miniaturas matemáticas",
+              "articulos": [
+                {
+                  "nombre": "¡No es magia! Es el teorema de Zeckendorf",
+                  "autor": "Manuel Ladra y Andrés Pérez-Rodríguez",
+                  "id": 1937,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=1937",
+                  "pagina_inicio": 42,
+                  "pagina_fin": 42
+                }
+              ]
+            },
+            {
+              "nombre": "Objetos perdidos",
+              "articulos": [
+                {
+                  "nombre": "El torero axiomático",
+                  "autor": "Antonio Córdoba",
+                  "id": 1939,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=1939",
+                  "pagina_inicio": 68,
+                  "pagina_fin": 68
+                }
+              ]
+            },
+            {
+              "nombre": "Problemas y Soluciones",
+              "articulos": [
+                {
+                  "nombre": "Problemas propuestos: números 527 (corrección) y 529 al 536",
+                  "id": 1943,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=1943"
+                },
+                {
+                  "nombre": "Soluciones a los problemas 505 al 512",
+                  "id": 1944,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=1944",
+                  "pagina_inicio": 103,
+                  "pagina_fin": 116
+                }
+              ]
+            },
+            {
+              "nombre": "Matemáticas en las aulas de Secundaria",
+              "articulos": [
+                {
+                  "nombre": "Las infinitas posibilidades de la divisibilidad",
+                  "autor": "Andrés Gutiérrez Jaime",
+                  "id": 1945,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=1945",
+                  "pagina_inicio": 117,
+                  "pagina_fin": 131
+                }
+              ]
+            },
+            {
+              "nombre": "Mirando hacia el futuro",
+              "articulos": [
+                {
+                  "nombre": "El problema principal de la teoría de bloques: elementos picky y subnormalizadores",
+                  "autor": "Alexander Moretó",
+                  "id": 1946,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=1946",
+                  "pagina_inicio": 133,
+                  "pagina_fin": 151
+                }
+              ]
+            },
+            {
+              "nombre": "La Olimpiada Matemática",
+              "articulos": [
+                {
+                  "nombre": "40.a Olimpiada Iberoamericana de Matemáticas",
+                  "autor": "María Gaspar y Marc Felipe i Alsina",
+                  "id": 1947,
+                  "link": "https://gaceta.rsme.es/abrir.php?id=1947",
+                  "pagina_inicio": 153,
+                  "pagina_fin": 159
+                }
+              ]
+            }
+          ],
+          "link_todo": "https://gaceta.rsme.es/abrirentero.php?id=131"
         },
         {
           "num": 2,
