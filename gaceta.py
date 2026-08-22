@@ -49,6 +49,8 @@ RE_ARTICULO = re.compile(r"abrir\.php\?id=(\d+)")
 RE_VENTANA = re.compile(r"""window\.open\(\s*["']([^"']+)["']""")
 # y algunos números ofrecen además el ejemplar completo con abrirentero.php
 RE_ENTERO = re.compile(r"abrirentero\.php\?id=(\d+)")
+# "DOI: 10.63427/ISDN5447"; sólo lo llevan los números recientes
+RE_DOI = re.compile(r"DOI:\s*(\S+)")
 # "Pág. 103-116" o "Pág. 42"; aquí hay que anclar en "Pág" porque el título
 # de un artículo puede contener un rango, como "6 años de La Gaceta (1998-2003)"
 RE_PAGINAS_ARTICULO = re.compile(
@@ -100,6 +102,18 @@ def url_absoluta(enlace):
 def texto_limpio(elemento):
     """Texto de un elemento con los espacios normalizados a uno solo."""
     return re.sub(r"\s+", " ", elemento.get_text()).strip()
+
+
+def extraer_doi(texto):
+    """Separa el DOI del texto que lo acompaña.
+
+    Devuelve (doi, resto) con el doi a None si no aparece; el resto se
+    entrega sin él para que no se duplique allá donde se guarde.
+    """
+    coincidencia = RE_DOI.search(texto)
+    if coincidencia is None:
+        return None, texto
+    return coincidencia.group(1), RE_DOI.sub("", texto, count=1)
 
 
 def destino_enlace(etiqueta):
@@ -234,6 +248,10 @@ def analizar_articulo(enlace, id_articulo):
         # "Pág. 42" es un artículo de una sola página
         articulo["pagina_fin"] = int(paginas.group(2) or inicio)
 
+    doi, _ = extraer_doi(resto)
+    if doi is not None:
+        articulo["doi"] = doi
+
     return articulo
 
 
@@ -260,7 +278,14 @@ def analizar_acerca_portada(celda):
         for texto in celda.find_all(string=True)
         if not isinstance(texto, Comment) and texto.find_parent(["h4", "a"]) is None
     ]
-    descripcion = re.sub(r"\s+", " ", "".join(trozos)).strip()
+
+    # el DOI viaja en su propia línea dentro de la celda: se guarda aparte y
+    # se retira del texto para no repetirlo en la descripción
+    doi, resto = extraer_doi("".join(trozos))
+    if doi is not None:
+        articulo["doi"] = doi
+
+    descripcion = re.sub(r"\s+", " ", resto).strip()
     if descripcion:
         articulo["descripcion"] = descripcion
 
