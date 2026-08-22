@@ -295,6 +295,34 @@ def analizar_acerca_portada(celda):
     return articulo
 
 
+def analizar_anuncio_suplemento(sopa):
+    """Datos del suplemento que anuncia la página de un número, si lo trae.
+
+    Viene en un <div class='suplemento'> con su título, su portada y el
+    enlace a versuplemento.php; el suplemento en sí se registra aparte, como
+    un número más del volumen.
+    """
+    bloque = sopa.find("div", class_="suplemento")
+    if bloque is None:
+        return None
+
+    enlace = bloque.find("a", href=RE_SUPLEMENTO)
+    if enlace is None:
+        return None
+
+    datos = {"link": url_absoluta(enlace["href"])}
+
+    cabecera = bloque.find("h4")
+    if cabecera is not None:
+        datos["nombre"] = texto_limpio(cabecera)
+
+    imagen = bloque.find("img")
+    if imagen is not None and imagen.get("src"):
+        datos["portada"] = url_absoluta(imagen["src"])
+
+    return datos
+
+
 def nueva_seccion(titulo):
     """Crea una sección vacía, que se distingue de un artículo por 'articulos'."""
     return {"nombre": texto_limpio(titulo), "articulos": []}
@@ -313,9 +341,10 @@ def avisar_secciones_vacias(entradas, camino=()):
 
 
 def analizar_pagina_numero(html):
-    """Analiza vernumero.php y devuelve (árbol de artículos, enlace al entero).
+    """Analiza vernumero.php o versuplemento.php, que comparten formato.
 
-    El contenido vive en una <table class='indice'> de tres columnas que se
+    Devuelve (árbol de artículos, enlace al número entero, suplemento). El
+    contenido vive en una <table class='indice'> de varias columnas que se
     recorren de izquierda a derecha. Dentro de cada una, un <h3> abre una
     sección y un <h4> una subsección; los artículos que siguen cuelgan de la
     última abierta, y el final de la columna cierra ambas.
@@ -329,9 +358,11 @@ def analizar_pagina_numero(html):
             entero = url_absoluta("abrirentero.php?id=%s" % coincidencia.group(1))
             break
 
+    suplemento = analizar_anuncio_suplemento(sopa)
+
     tabla = sopa.find("table", class_="indice")
     if tabla is None:
-        return None, entero
+        return None, entero, suplemento
 
     articulos = []
     portada = None
@@ -341,6 +372,9 @@ def analizar_pagina_numero(html):
         subseccion = None
 
         for elemento in celda.find_all(["h3", "h4", "a"]):
+            if elemento.find_parent("div", class_="suplemento") is not None:
+                continue  # el suplemento se registra como número aparte
+
             if elemento.name == "h3":
                 seccion = nueva_seccion(elemento)
                 subseccion = None
@@ -385,7 +419,7 @@ def analizar_pagina_numero(html):
         articulos.insert(0, portada)
 
     avisar_secciones_vacias(articulos)
-    return articulos, entero
+    return articulos, entero, suplemento
 
 
 # --------------------------------------------------------------------------
@@ -393,9 +427,46 @@ def analizar_pagina_numero(html):
 # --------------------------------------------------------------------------
 
 
+def es_suplemento(numero):
+    """Un número es suplemento de otro si dice de cuál lo es."""
+    return "principal" in numero
+
+
 def nombre_carpeta_volumen(volumen):
     """Nombre de carpeta de un volumen, por ejemplo 'Vol 01 (1998)'."""
     return "Vol %02d (%d)" % (volumen["num"], volumen["año"])
+
+
+def nombre_carpeta_numero(numero):
+    """Nombre de subcarpeta de un número: '2', o '2 sup' si es suplemento.
+
+    Un suplemento comparte el número de aquel al que acompaña, así que hace
+    falta el sufijo para que no se pisen dentro del volumen.
+    """
+    if es_suplemento(numero):
+        return "%d sup" % numero["num"]
+    return str(numero["num"])
+
+
+def ordenar_numeros(volumen):
+    """Ordena los números dejando cada suplemento tras el número que amplía."""
+    volumen["numeros"].sort(
+        key=lambda numero: (numero["num"], 1 if es_suplemento(numero) else 0)
+    )
+
+
+def crear_carpeta_numero(volumen, numero, opciones):
+    """Crea la carpeta de un número; devuelve su ruta sólo si no existía."""
+    ruta = os.path.join(
+        opciones.destino,
+        nombre_carpeta_volumen(volumen),
+        nombre_carpeta_numero(numero),
+    )
+    if os.path.isdir(ruta):
+        return None
+    if not opciones.simulacion:
+        os.makedirs(ruta)
+    return ruta
 
 
 def crear_arbol(volumenes, opciones):
@@ -403,16 +474,11 @@ def crear_arbol(volumenes, opciones):
     creadas = 0
 
     for volumen in volumenes:
-        ruta_volumen = os.path.join(opciones.destino, nombre_carpeta_volumen(volumen))
-
         for numero in volumen["numeros"]:
-            ruta_numero = os.path.join(ruta_volumen, str(numero["num"]))
-            if os.path.isdir(ruta_numero):
-                continue
-            if not opciones.simulacion:
-                os.makedirs(ruta_numero)
-            creadas += 1
-            informar(opciones, "  creada %s" % ruta_numero)
+            ruta = crear_carpeta_numero(volumen, numero, opciones)
+            if ruta is not None:
+                creadas += 1
+                informar(opciones, "  creada %s" % ruta)
 
     return creadas
 
@@ -445,15 +511,91 @@ def escribir_mapa(mapa, opciones):
     return ruta
 
 
-def buscar_numero(mapa, num_volumen, num_numero):
+def buscar_numero(mapa, num_volumen, num_numero, suplemento=False):
     """Localiza un número dentro del mapa, o (None, None) si no está."""
     for volumen in mapa.get("volumenes", []):
         if volumen["num"] != num_volumen:
             continue
         for numero in volumen["numeros"]:
-            if numero["num"] == num_numero:
+            if numero["num"] == num_numero and es_suplemento(numero) == suplemento:
                 return volumen, numero
     return None, None
+
+
+def registrar_suplemento(volumen, principal, datos):
+    """Crea o actualiza la entrada del suplemento de un número.
+
+    El índice general no menciona el nombre ni la portada del suplemento, así
+    que sólo se conocen al visitar la página del número que lo publica.
+    """
+    entrada = None
+    for numero in volumen["numeros"]:
+        if es_suplemento(numero) and numero["num"] == principal["num"]:
+            entrada = numero
+            break
+
+    nueva = entrada is None
+    if nueva:
+        entrada = {}
+        volumen["numeros"].append(entrada)
+
+    # se rehacen las claves de cabecera, pero sin tirar lo que ya se mapeó
+    articulos = entrada.pop("articulos", None)
+    entrada.clear()
+    entrada["num"] = principal["num"]
+    if "nombre" in datos:
+        entrada["nombre"] = datos["nombre"]
+    entrada["principal"] = principal["num"]
+    if "portada" in datos:
+        entrada["portada"] = datos["portada"]
+    entrada["link"] = datos["link"]
+    if articulos is not None:
+        entrada["articulos"] = articulos
+
+    ordenar_numeros(volumen)
+    return entrada, nueva
+
+
+def fusionar_mapa(volumenes, anterior):
+    """Traslada al índice recién descargado lo que ya se había mapeado.
+
+    El índice general sólo conoce la portada y el enlace de cada número, de
+    modo que regenerarlo sin más borraría los artículos ya extraídos y los
+    suplementos, que ni siquiera figuran en él.
+    """
+    if anterior is None:
+        return 0
+
+    previos = {}
+    for volumen in anterior.get("volumenes", []):
+        for numero in volumen["numeros"]:
+            clave = (volumen["num"], numero["num"], es_suplemento(numero))
+            previos[clave] = numero
+
+    conservados = 0
+
+    for volumen in volumenes:
+        for numero in volumen["numeros"]:
+            viejo = previos.get((volumen["num"], numero["num"], False))
+            if viejo is None:
+                continue
+            for clave in ("link_todo", "articulos"):
+                if clave in viejo:
+                    numero[clave] = viejo[clave]
+            if "articulos" in viejo:
+                conservados += 1
+
+        suplementos = [
+            viejo
+            for (num_vol, _, sup), viejo in previos.items()
+            if sup and num_vol == volumen["num"]
+        ]
+        volumen["numeros"].extend(suplementos)
+        conservados += len(suplementos)
+        if suplementos:
+            ordenar_numeros(volumen)
+
+    return conservados
 
 
 def mapear_indice(opciones):
@@ -472,6 +614,13 @@ def mapear_indice(opciones):
         opciones,
         "Encontrados %d volúmenes y %d números." % (len(volumenes), total),
     )
+
+    conservados = fusionar_mapa(volumenes, leer_mapa(opciones))
+    if conservados:
+        informar(
+            opciones,
+            "Conservadas %d entradas ya mapeadas del mapa anterior." % conservados,
+        )
 
     creadas = crear_arbol(volumenes, opciones)
     informar(opciones, "Creadas %d carpetas de números nuevas." % creadas)
@@ -501,15 +650,21 @@ def mapear_numero(opciones):
             "no existe %s; ejecuta antes --mapa para crearlo" % ruta_mapa(opciones)
         )
 
-    volumen, numero = buscar_numero(mapa, opciones.vol, opciones.num)
+    volumen, numero = buscar_numero(mapa, opciones.vol, opciones.num, opciones.sup)
     if numero is None:
+        if opciones.sup:
+            return error(
+                "el mapa no recoge ningún suplemento del volumen %d, número %d; "
+                "mapea antes ese número para descubrirlo"
+                % (opciones.vol, opciones.num)
+            )
         return error(
             "el mapa no contiene el volumen %d, número %d"
             % (opciones.vol, opciones.num)
         )
 
     informar(opciones, "Descargando %s ..." % numero["link"])
-    articulos, entero = analizar_pagina_numero(descargar(numero["link"]))
+    articulos, entero, suplemento = analizar_pagina_numero(descargar(numero["link"]))
 
     if articulos is None:
         return error(
@@ -525,19 +680,36 @@ def mapear_numero(opciones):
 
     informar(
         opciones,
-        "Vol %02d (%d), número %d: %d artículos en %d entradas de primer nivel."
+        "Vol %02d (%d), número %s: %d artículos en %d entradas de primer nivel."
         % (
             volumen["num"],
             volumen["año"],
-            numero["num"],
+            nombre_carpeta_numero(numero),
             contar_articulos(articulos),
             len(articulos),
         ),
     )
+    if es_suplemento(numero):
+        informar(opciones, "Suplemento «%s»" % numero.get("nombre", "sin título"))
     informar(
         opciones,
         "Número entero: %s" % (entero if entero else "no disponible, sólo por partes"),
     )
+
+    if suplemento is not None:
+        entrada, nueva = registrar_suplemento(volumen, numero, suplemento)
+        informar(
+            opciones,
+            "Suplemento %s: «%s» (número %s)"
+            % (
+                "registrado" if nueva else "actualizado",
+                entrada.get("nombre", "sin título"),
+                nombre_carpeta_numero(entrada),
+            ),
+        )
+        ruta = crear_carpeta_numero(volumen, entrada, opciones)
+        if ruta is not None:
+            informar(opciones, "  creada %s" % ruta)
 
     ruta = escribir_mapa(mapa, opciones)
     informar(opciones, "Escrito %s" % ruta)
@@ -588,6 +760,11 @@ def principal(argumentos):
         help="número dentro del volumen indicado con --vol",
     )
     analizador.add_option(
+        "-s", "--sup",
+        action="store_true", default=False,
+        help="actúa sobre el suplemento de ese número, no sobre el número",
+    )
+    analizador.add_option(
         "-d", "--destino",
         metavar="DIR", default=".",
         help="carpeta raíz del archivo [por defecto: %default]",
@@ -610,6 +787,9 @@ def principal(argumentos):
 
     if (opciones.vol is None) != (opciones.num is None):
         analizador.error("--vol y --num deben indicarse juntos")
+
+    if opciones.sup and opciones.vol is None:
+        analizador.error("--sup necesita que se indiquen --vol y --num")
 
     if not opciones.mapa and opciones.vol is None:
         analizador.print_help()
