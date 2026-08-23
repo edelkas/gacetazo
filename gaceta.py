@@ -6,6 +6,7 @@ Construye un archivo local de la revista: una carpeta por volumen, una
 subcarpeta por número, y un sitemap.json que describe todo lo encontrado.
 """
 
+import hashlib
 import json
 import os
 import re
@@ -39,6 +40,9 @@ RESERVADOS |= {"LPT%d" % n for n in range(1, 10)}
 # los títulos de los artículos pueden ser larguísimos, y la ruta completa no
 # debería acercarse al límite de 260 caracteres de Windows
 LARGO_NOMBRE = 120
+
+# tamaño del trozo con que se leen y escriben los ficheros
+TROZO = 64 * 1024
 
 # extensión a usar según lo que anuncie el servidor, ya que abrir.php sirve
 # todos los artículos con el mismo nombre genérico
@@ -174,6 +178,24 @@ def nombre_libre(carpeta, nombre, usados):
         candidato = "%s (%d)" % (nombre, orden)
     usados.add(candidato.lower())
     return candidato
+
+
+def md5_de(ruta):
+    """Hash MD5 de un fichero ya guardado en el disco."""
+    digest = hashlib.md5()
+    with open(ruta, "rb") as fichero:
+        for trozo in iter(lambda: fichero.read(TROZO), b""):
+            digest.update(trozo)
+    return digest.hexdigest()
+
+
+def ruta_relativa(ruta, opciones):
+    """Ruta relativa a la raíz del archivo, con barras normales.
+
+    Se guarda así, y no con la barra invertida de Windows, para que el mapa
+    sea legible y sirva igual en cualquier sistema.
+    """
+    return os.path.relpath(ruta, opciones.destino).replace(os.sep, "/")
 
 
 def fichero_existente(carpeta, nombre):
@@ -819,15 +841,47 @@ def mapear_entrada(volumen, numero, opciones):
 # --------------------------------------------------------------------------
 
 
-def guardar(url, carpeta, nombre, opciones, resumen):
+def conviene_rehacer(previo, entrada, opciones):
+    """Decide si hay que volver a bajar un fichero que ya está en el disco.
+
+    Se rehace cuando su MD5 no cuadra con el anotado en el mapa, y también
+    cuando no hay ninguno anotado, porque entonces no hay forma de saber si
+    lo que hay en el disco está entero.
+    """
+    if entrada is None:
+        return False  # sin entrada donde anotarlo, basta con que exista
+
+    registro = entrada.get("fichero") or {}
+    if not registro.get("md5"):
+        informar(opciones, "  sin MD5 anotado, se vuelve a bajar: %s" % previo)
+        return True
+
+    if md5_de(previo) != registro["md5"]:
+        avisar("%s no cuadra con su MD5; se vuelve a bajar" % previo)
+        return True
+
+    return False
+
+
+def guardar(url, carpeta, nombre, opciones, resumen, entrada=None):
     """Descarga una URL en la carpeta dada, con el nombre dado y su extensión.
 
-    Devuelve el estado: 'existe', 'guardado', 'reservado' o 'error'.
+    Si se le pasa la entrada del mapa correspondiente, anota en ella la ruta,
+    el tamaño y el MD5 de lo descargado. Devuelve el estado: 'existe',
+    'guardado', 'reservado' o 'error'.
     """
     previo = fichero_existente(carpeta, nombre)
+
+    if previo is None and entrada is not None:
+        # el fichero ya no está: el registro que hubiera es papel mojado
+        entrada.pop("fichero", None)
+
+    rehacer = False
     if previo is not None:
-        resumen["existe"] += 1
-        return "existe"
+        rehacer = conviene_rehacer(previo, entrada, opciones)
+        if not rehacer:
+            resumen["existe"] += 1
+            return "existe"
 
     try:
         respuesta = pedir(url, flujo=True)
@@ -850,10 +904,14 @@ def guardar(url, carpeta, nombre, opciones, resumen):
             informar(opciones, "  se guardaría %s" % ruta)
             return "guardado"
 
+        digest = hashlib.md5()
+        tamaño = 0
         try:
             with open(ruta, "wb") as fichero:
-                for trozo in respuesta.iter_content(64 * 1024):
+                for trozo in respuesta.iter_content(TROZO):
                     fichero.write(trozo)
+                    digest.update(trozo)
+                    tamaño += len(trozo)
         except requests.RequestException as fallo:
             avisar("se ha cortado la descarga de %s: %s" % (url, fallo))
             if os.path.exists(ruta):
@@ -861,7 +919,21 @@ def guardar(url, carpeta, nombre, opciones, resumen):
             resumen["error"] += 1
             return "error"
 
-    resumen["guardado"] += 1
+    # si la extensión ha cambiado, el fichero viejo sobra
+    if previo is not None and os.path.abspath(previo) != os.path.abspath(ruta):
+        os.remove(previo)
+
+    if entrada is not None:
+        entrada["fichero"] = {
+            "ruta": ruta_relativa(ruta, opciones),
+            "tamaño": tamaño,
+            "md5": digest.hexdigest(),
+        }
+
+    if rehacer:
+        resumen["rehecho"] += 1
+    else:
+        resumen["guardado"] += 1
     informar(opciones, "  %s" % ruta)
     return "guardado"
 
@@ -877,7 +949,7 @@ def descargar_articulos(entradas, carpeta, opciones, resumen, usados):
             continue  # p. ej. un «Acerca de la portada» que sólo trae texto
 
         nombre = nombre_libre(carpeta, sanear_nombre(entrada["nombre"]), usados)
-        guardar(entrada["link"], carpeta, nombre, opciones, resumen)
+        guardar(entrada["link"], carpeta, nombre, opciones, resumen, entrada)
 
 
 def descargar_numero(volumen, numero, opciones, resumen):
@@ -904,7 +976,9 @@ def descargar_numero(volumen, numero, opciones, resumen):
         guardar(numero["portada"], carpeta, FICHERO_PORTADA, opciones, resumen)
 
     if opciones.entero and numero.get("link_todo"):
-        estado = guardar(numero["link_todo"], carpeta, FICHERO_ENTERO, opciones, resumen)
+        estado = guardar(
+            numero["link_todo"], carpeta, FICHERO_ENTERO, opciones, resumen, numero
+        )
         if estado in ("guardado", "existe"):
             return 0
         # reservado a socios o caído: los artículos sueltos suelen seguir ahí
@@ -918,7 +992,7 @@ def descargar_numero(volumen, numero, opciones, resumen):
 
 def nuevo_resumen():
     """Contadores de una tanda de descargas."""
-    return dict(guardado=0, existe=0, reservado=0, error=0, mapeados=0)
+    return dict(guardado=0, existe=0, reservado=0, error=0, mapeados=0, rehecho=0)
 
 
 def contar_resumen(opciones, resumen):
@@ -933,6 +1007,12 @@ def contar_resumen(opciones, resumen):
             resumen["error"],
         ),
     )
+    if resumen["rehecho"]:
+        informar(
+            opciones,
+            "Se han rehecho %d ficheros por MD5 ausente o incorrecto."
+            % resumen["rehecho"],
+        )
     if resumen["mapeados"]:
         informar(opciones, "Se han mapeado %d números por el camino." % resumen["mapeados"])
     if opciones.simulacion:
@@ -974,8 +1054,9 @@ def descargar_uno(opciones):
     if codigo:
         return codigo
 
-    if resumen["mapeados"]:
-        escribir_mapa(mapa, opciones)
+    # la descarga anota en el mapa lo que va guardando
+    ruta = escribir_mapa(mapa, opciones)
+    informar(opciones, "Escrito %s" % ruta)
 
     contar_resumen(opciones, resumen)
     return 0
@@ -1011,8 +1092,8 @@ def descargar_todo(opciones):
         codigo = descargar_numero(volumen, numero, opciones, resumen)
         if codigo:
             return codigo
-        if resumen["mapeados"]:
-            escribir_mapa(mapa, opciones)  # no perder el mapeo si se interrumpe
+        # se guarda número a número para no perder el avance si se interrumpe
+        escribir_mapa(mapa, opciones)
 
     contar_resumen(opciones, resumen)
     return 0

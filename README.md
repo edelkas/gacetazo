@@ -70,7 +70,19 @@ repetidos con un sufijo `(2)`), y conserva la extensión que anuncia el
 servidor. La portada se llama siempre `Portada`, y con `--entero`, el ejemplar
 completo se guarda como `Número completo`.
 
-Nada se descarga dos veces: si ya existe un fichero con ese nombre, se salta.
+De cada artículo descargado se anota en su entrada del mapa una clave
+`fichero` con la ruta relativa a la raíz, el tamaño y el MD5 calculado al
+vuelo. Con `--entero`, esa clave se anota en el número en vez de en un
+artículo.
+
+```jsonc
+"fichero": { "ruta": "Vol 06 (2003)/2 sup/Anexo 6....pdf",
+             "tamaño": 86489, "md5": "cdafbcd00e3aaf648a083d30f00457ce" }
+```
+
+Nada se descarga dos veces: si el fichero ya está y su MD5 cuadra con el
+anotado, se salta. Se vuelve a bajar, sustituyendo lo que hubiera, cuando el
+MD5 no cuadra (fichero corrupto o a medias) o cuando no hay ninguno anotado.
 
 Los números más recientes están reservados a los socios de la RSME. Su página
 se consulta y se mapea con normalidad, pero el PDF redirige al formulario de
