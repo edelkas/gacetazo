@@ -12,14 +12,22 @@ import os
 import re
 import sys
 from optparse import IndentedHelpFormatter, OptionParser
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin, urlparse, urlunparse
 
 import requests
 from bs4 import BeautifulSoup, Comment
 
 URL_BASE = "https://gaceta.rsme.es/"
+SERVIDOR = urlparse(URL_BASE).hostname
 URL_INDICE = URL_BASE + "otrosnumeros.php"
+URL_ACCESO = URL_BASE + "control.php"
 NOMBRE_MAPA = "sitemap.json"
+
+# el formulario de acceso de la portada manda a control.php estos tres campos,
+# y el servidor responde redirigiendo: a la dirección pedida si las
+# credenciales valen, o de vuelta a login.php si no
+DIRECCION_ACCESO = "index.php"
+DESTINO_RECHAZO = "login.php"
 
 # Prefacio que casi todos los números publican junto a la portada, en la
 # columna derecha. Va bajo un <h4> que no cuelga de ningún <h3>, así que se
@@ -126,16 +134,75 @@ def error(mensaje):
     return 1
 
 
+def asegurar_https(url):
+    """Eleva a HTTPS los enlaces de la revista que vengan en claro.
+
+    El servidor atiende igual por HTTP y no redirige a HTTPS, de modo que un
+    solo enlace absoluto en claro bastaría para mandar la sesión sin cifrar.
+    """
+    partes = urlparse(url)
+    if partes.scheme == "http" and partes.hostname == SERVIDOR:
+        return urlunparse(partes._replace(scheme="https"))
+    return url
+
+
+def comprobar_cifrado(respuesta):
+    """Avisa si alguna redirección ha sacado la petición de HTTPS."""
+    for salto in respuesta.history + [respuesta]:
+        if urlparse(salto.url).scheme != "https":
+            avisar("la petición ha acabado sin cifrar en %s" % salto.url)
+            return False
+    return True
+
+
 def pedir(url, flujo=False):
     """Pide una URL y devuelve la respuesta, ya comprobada."""
-    respuesta = SESION.get(url, timeout=60, stream=flujo)
+    respuesta = SESION.get(asegurar_https(url), timeout=60, stream=flujo)
     respuesta.raise_for_status()
+    comprobar_cifrado(respuesta)
     return respuesta
 
 
 def usar_cookie(valor):
-    """Empieza a presentarse como socio con esa cookie de sesión."""
-    SESION.cookies.set(COOKIE_SESION, valor, domain=urlparse(URL_BASE).hostname)
+    """Empieza a presentarse como socio con esa cookie de sesión.
+
+    Se marca como segura para que no salga nunca por una conexión en claro,
+    ya que vale tanto como la contraseña.
+    """
+    SESION.cookies.set(
+        COOKIE_SESION, valor, domain=SERVIDOR, path="/", secure=True
+    )
+
+
+def acceder(usuario, contrasena):
+    """Entra como socio y devuelve la cookie obtenida, o None si la rechazan.
+
+    Es el mismo POST que hace el formulario de la portada. El servidor no
+    devuelve ningún mensaje: se sabe si ha colado por adónde redirige.
+    """
+    # el formulario viaja sin cifrar de ninguna otra forma: si esto no fuera
+    # HTTPS, la contraseña iría en claro por la red
+    if urlparse(URL_ACCESO).scheme != "https":
+        raise ValueError("el acceso exige HTTPS: %s" % URL_ACCESO)
+
+    SESION.cookies.clear()
+    respuesta = SESION.post(
+        URL_ACCESO,
+        data={
+            "usuario": usuario,
+            "contrasena": contrasena,
+            "direccion": DIRECCION_ACCESO,
+        },
+        allow_redirects=False,
+        timeout=60,
+    )
+    respuesta.raise_for_status()
+
+    if DESTINO_RECHAZO in respuesta.headers.get("Location", ""):
+        SESION.cookies.clear()
+        return None
+
+    return SESION.cookies.get(COOKIE_SESION)
 
 
 def descartar_cookie(opciones):
@@ -231,7 +298,7 @@ def fichero_existente(carpeta, nombre):
 
 def url_absoluta(enlace):
     """Convierte un enlace relativo como './portadas/x.jpg' en una URL completa."""
-    return urljoin(URL_BASE, enlace)
+    return asegurar_https(urljoin(URL_BASE, enlace))
 
 
 def texto_limpio(elemento):
@@ -631,13 +698,33 @@ def leer_mapa(opciones):
 
 
 def preparar_cookie(mapa, opciones):
-    """Elige la cookie a usar: la de la línea de órdenes o la que guarda el mapa."""
-    valor = opciones.cookie or (mapa or {}).get("cookie")
+    """Deja lista la sesión de socio, si la hay. Indica si se puede seguir.
+
+    Manda la cookie que se haya indicado a mano; en su defecto se entra con
+    usuario y contraseña, y si tampoco los hay se recurre a la cookie que
+    quedara anotada de una ejecución anterior.
+    """
+    valor = opciones.cookie
+    recien_accedido = False
+
+    if not valor and opciones.usuario:
+        informar(opciones, "Accediendo como %s ..." % opciones.usuario)
+        valor = acceder(opciones.usuario, opciones.contrasena)
+        if valor is None:
+            error("la revista ha rechazado ese usuario o esa contraseña")
+            return False
+        informar(opciones, "Acceso concedido.")
+        recien_accedido = True
+
+    if not valor:
+        valor = (mapa or {}).get("cookie")
+
     opciones.cookie_activa = valor
     if valor:
         usar_cookie(valor)
-        informar(opciones, "Sesión de socio activa.")
-    return valor
+        if not recien_accedido:
+            informar(opciones, "Sesión de socio activa.")
+    return True
 
 
 def anotar_cookie(mapa, opciones):
@@ -761,7 +848,8 @@ def fusionar_mapa(volumenes, anterior):
 def mapear_indice(opciones):
     """Descarga el índice general de volúmenes y escribe el mapa."""
     anterior = leer_mapa(opciones)
-    preparar_cookie(anterior, opciones)
+    if not preparar_cookie(anterior, opciones):
+        return 1
 
     informar(opciones, "Descargando %s ..." % URL_INDICE)
     volumenes = analizar_indice_volumenes(descargar(URL_INDICE))
@@ -810,7 +898,8 @@ def mapear_numero(opciones):
             "no existe %s; ejecuta antes --mapa para crearlo" % ruta_mapa(opciones)
         )
 
-    preparar_cookie(mapa, opciones)
+    if not preparar_cookie(mapa, opciones):
+        return 1
 
     volumen, numero = buscar_numero(mapa, opciones.vol, opciones.num, opciones.sup)
     if numero is None:
@@ -1090,7 +1179,8 @@ def descargar_uno(opciones):
             "no existe %s; ejecuta antes --mapa para crearlo" % ruta_mapa(opciones)
         )
 
-    preparar_cookie(mapa, opciones)
+    if not preparar_cookie(mapa, opciones):
+        return 1
 
     volumen, numero = buscar_numero(mapa, opciones.vol, opciones.num, opciones.sup)
     if numero is None:
@@ -1126,7 +1216,8 @@ def descargar_todo(opciones):
             "no existe %s; ejecuta antes --mapa para crearlo" % ruta_mapa(opciones)
         )
 
-    preparar_cookie(mapa, opciones)
+    if not preparar_cookie(mapa, opciones):
+        return 1
 
     numeros = [
         (volumen, numero)
@@ -1212,10 +1303,20 @@ def principal(argumentos):
         help="actúa sobre el suplemento de ese número, no sobre el número",
     )
     analizador.add_option(
+        "-u", "--usuario",
+        metavar="NOMBRE",
+        help="usuario de socio con el que acceder, junto con --contraseña",
+    )
+    analizador.add_option(
+        "-p", "--contraseña", "--contrasena",
+        dest="contrasena", metavar="CLAVE",
+        help="contraseña de ese usuario; no se guarda en ninguna parte",
+    )
+    analizador.add_option(
         "-c", "--cookie",
         metavar="VALOR",
-        help="valor de la cookie PHPSESSID de una sesión de socio, para "
-             "acceder al material reservado; se recuerda en el mapa",
+        help="valor de la cookie PHPSESSID de una sesión ya abierta; tiene "
+             "preferencia sobre --usuario y se recuerda en el mapa",
     )
     analizador.add_option(
         "-d", "--destino",
@@ -1238,6 +1339,9 @@ def principal(argumentos):
 
     if sueltos:
         analizador.error("argumento inesperado: %s" % sueltos[0])
+
+    if (opciones.usuario is None) != (opciones.contrasena is None):
+        analizador.error("--usuario y --contraseña deben indicarse juntos")
 
     if opciones.cookie is not None and not RE_COOKIE.match(opciones.cookie):
         analizador.error(

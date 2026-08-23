@@ -39,7 +39,9 @@ python gaceta.py --descarga                    # descarga todo (pide confirmaci�
 | `-v N`, `--vol=N` | Volumen sobre el que actuar |
 | `-N N`, `--num=N` | Número dentro de ese volumen |
 | `-s`, `--sup` | Actúa sobre el suplemento de ese número |
-| `-c VALOR`, `--cookie=VALOR` | Cookie `PHPSESSID` de una sesión de socio |
+| `-u NOMBRE`, `--usuario=NOMBRE` | Usuario de socio con el que acceder |
+| `-p CLAVE`, `--contraseña=CLAVE` | Su contraseña (no se guarda en ninguna parte); también `--contrasena` |
+| `-c VALOR`, `--cookie=VALOR` | Cookie `PHPSESSID` de una sesión ya abierta |
 | `-d DIR`, `--destino=DIR` | Carpeta raíz del archivo (por defecto, la actual) |
 | `-n`, `--simulacion` | Informa de lo que haría, sin escribir nada |
 | `-q`, `--silencioso` | Oculta la información de progreso |
@@ -93,18 +95,52 @@ acceso; esas descargas se cuentan aparte como *reservadas* y no se guarda nada
 en su lugar. Con `--entero`, si el ejemplar completo está reservado se
 recurre a los artículos sueltos, que a menudo sí están abiertos.
 
-La revista reconoce al socio por la cookie de sesión `PHPSESSID`. Basta con
-copiarla del navegador y pasarla una vez:
+La forma cómoda de identificarse es con las credenciales de socio, que la
+herramienta usa para entrar por su cuenta:
+
+```
+python gaceta.py --descarga --vol 29 --num 1 --usuario NOMBRE --contraseña CLAVE
+```
+
+Se envían al mismo `control.php` al que manda el formulario de la portada, y
+de ahí se toma la cookie de sesión. **Ni el usuario ni la contraseña se
+guardan**: sólo la cookie resultante. Si la revista los rechaza, se dice y no
+se descarga nada. Ambas opciones van juntas o ninguna.
+
+También puede pasarse directamente la cookie `PHPSESSID` copiada del
+navegador, sólo su valor y sin el `PHPSESSID=` delante:
 
 ```
 python gaceta.py --descarga --vol 29 --num 1 --cookie 2cc72e32b8cd...
 ```
 
-Sólo su valor, sin el `PHPSESSID=` delante. Se admite una cadena hexadecimal
-de entre 22 y 256 caracteres (la revista usa 32), y se rechaza cualquier otra
-cosa. La cookie queda anotada en `sitemap.json` y las siguientes ejecuciones la
-reutilizan sin necesidad de repetirla. Si la revista deja de reconocerla, se
-avisa por pantalla, se borra del mapa y la descarga continúa como visitante.
+Se admite una cadena hexadecimal de entre 22 y 256 caracteres (la revista usa
+32) y se rechaza cualquier otra cosa. Si se dan las dos formas a la vez,
+`--cookie` manda y no se llega a acceder con las credenciales.
+
+En cualquiera de los dos casos la cookie queda anotada en `sitemap.json` y las
+siguientes ejecuciones la reutilizan sin necesidad de repetir nada. Si la
+revista deja de reconocerla, se avisa por pantalla, se borra del mapa y la
+descarga continúa como visitante. Conviene recordar que esa cookie es una
+sesión viva: no compartas el `sitemap.json` sin quitarla antes.
+
+### Todo va cifrado
+
+El formulario de acceso manda la contraseña tal cual, sin cifrar por su
+cuenta, así que lo único que la protege es la conexión. El servidor de la
+revista atiende igual por HTTP y **no** redirige a HTTPS, de modo que la
+herramienta se ocupa de que eso no pase nunca:
+
+- todas las peticiones salen por `https://`, y cualquier enlace del sitio que
+  venga en claro se eleva a HTTPS antes de pedirlo;
+- el acceso con usuario y contraseña se niega a ejecutarse si la dirección no
+  es HTTPS;
+- la cookie de sesión se marca como segura, así que no se envía por una
+  conexión sin cifrar aunque algo redirija a ella;
+- se avisa si alguna redirección acaba sacando una petición de HTTPS.
+
+El certificado se valida siempre (hoy la revista sirve TLS 1.3 con
+certificado de Let's Encrypt).
 
 ## Formato de `sitemap.json`
 
