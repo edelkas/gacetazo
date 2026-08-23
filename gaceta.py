@@ -11,7 +11,7 @@ import os
 import re
 import sys
 from optparse import IndentedHelpFormatter, OptionParser
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup, Comment
@@ -25,6 +25,30 @@ NOMBRE_MAPA = "sitemap.json"
 # trata como caso conocido y no como la subsección huérfana que aparenta ser.
 TITULO_PORTADA = "Acerca de la portada"
 AUTOR_PORTADA = "Redacción de La Gaceta"
+
+# nombres de fichero fijos dentro de la carpeta de cada número
+FICHERO_PORTADA = "Portada"
+FICHERO_ENTERO = "Número completo"
+
+# Windows prohíbe estos caracteres en un nombre de fichero, y también los
+# nombres heredados de los dispositivos del DOS
+RE_PROHIBIDOS = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
+RESERVADOS = {"CON", "PRN", "AUX", "NUL"}
+RESERVADOS |= {"COM%d" % n for n in range(1, 10)}
+RESERVADOS |= {"LPT%d" % n for n in range(1, 10)}
+# los títulos de los artículos pueden ser larguísimos, y la ruta completa no
+# debería acercarse al límite de 260 caracteres de Windows
+LARGO_NOMBRE = 120
+
+# extensión a usar según lo que anuncie el servidor, ya que abrir.php sirve
+# todos los artículos con el mismo nombre genérico
+EXTENSIONES = {
+    "application/pdf": ".pdf",
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/gif": ".gif",
+}
+RE_ADJUNTO = re.compile(r'filename\*?=(?:"([^"]+)"|([^;]+))', re.IGNORECASE)
 
 AGENTE_USUARIO = (
     "Mozilla/5.0 (compatible; gaceta-archivador/0.1; "
@@ -40,8 +64,10 @@ RE_VOLUMEN = re.compile(r"Volumen\s+(\d+)\s*\((\d{4})\)")
 RE_NUMERO = re.compile(r"N\w*mero\s+(\d+)")
 # "Pág. 271-518" -> (271, 518); se deja laxo, vale cualquier rango numérico
 RE_PAGINAS = re.compile(r"(\d+)\s*[%s]\s*(\d+)" % GUIONES)
+# cada número se consulta con vernumero.php?id=N, y ese N lo identifica
+RE_NUMERO_ID = re.compile(r"vernumero\.php\?id=(\d+)")
 # unos pocos números llevan un volumen extra servido por versuplemento.php
-RE_SUPLEMENTO = re.compile(r"versuplemento\.php")
+RE_SUPLEMENTO = re.compile(r"versuplemento\.php\?id=(\d+)")
 
 # dentro de la página de un número: cada artículo se abre con abrir.php?id=N
 RE_ARTICULO = re.compile(r"abrir\.php\?id=(\d+)")
@@ -87,11 +113,77 @@ def error(mensaje):
     return 1
 
 
+def pedir(url, flujo=False):
+    """Pide una URL y devuelve la respuesta, ya comprobada."""
+    respuesta = requests.get(
+        url,
+        headers={"User-Agent": AGENTE_USUARIO},
+        timeout=60,
+        stream=flujo,
+    )
+    respuesta.raise_for_status()
+    return respuesta
+
+
 def descargar(url):
     """Pide una URL y devuelve su contenido ya decodificado."""
-    respuesta = requests.get(url, headers={"User-Agent": AGENTE_USUARIO}, timeout=30)
-    respuesta.raise_for_status()
-    return respuesta.text
+    return pedir(url).text
+
+
+def es_muro(respuesta):
+    """Indica si la respuesta acabó en el formulario de acceso para socios."""
+    return "login.php" in respuesta.url
+
+
+def extension_de(respuesta):
+    """Extensión que corresponde a lo que ha servido el servidor."""
+    adjunto = RE_ADJUNTO.search(respuesta.headers.get("Content-Disposition", ""))
+    if adjunto is not None:
+        nombre = (adjunto.group(1) or adjunto.group(2)).strip()
+        extension = os.path.splitext(nombre)[1]
+        if extension:
+            return extension.lower()
+
+    tipo = respuesta.headers.get("Content-Type", "").split(";")[0].strip().lower()
+    if tipo in EXTENSIONES:
+        return EXTENSIONES[tipo]
+
+    return os.path.splitext(urlparse(respuesta.url).path)[1].lower()
+
+
+def sanear_nombre(nombre):
+    """Convierte un título en un nombre de fichero admisible en Windows."""
+    limpio = RE_PROHIBIDOS.sub("", nombre)
+    limpio = re.sub(r"\s+", " ", limpio).strip()
+    limpio = limpio[:LARGO_NOMBRE]
+    # un nombre no puede acabar en punto ni en espacio
+    limpio = limpio.rstrip(" .")
+    if not limpio:
+        return "sin título"
+    if limpio.upper() in RESERVADOS:
+        return limpio + "_"
+    return limpio
+
+
+def nombre_libre(carpeta, nombre, usados):
+    """Añade un sufijo al nombre si dos artículos comparten título."""
+    candidato = nombre
+    orden = 1
+    while candidato.lower() in usados:
+        orden += 1
+        candidato = "%s (%d)" % (nombre, orden)
+    usados.add(candidato.lower())
+    return candidato
+
+
+def fichero_existente(carpeta, nombre):
+    """Ruta del fichero ya descargado con ese nombre, sea cual sea su extensión."""
+    if not os.path.isdir(carpeta):
+        return None
+    for entrada in os.listdir(carpeta):
+        if os.path.splitext(entrada)[0] == nombre:
+            return os.path.join(carpeta, entrada)
+    return None
 
 
 def url_absoluta(enlace):
@@ -142,7 +234,7 @@ def analizar_celda_numero(celda):
 
     Devuelve None para las celdas de relleno, que no llevan enlace.
     """
-    enlace = celda.find("a", href=re.compile(r"vernumero\.php"))
+    enlace = celda.find("a", href=RE_NUMERO_ID)
     if enlace is None:
         return None
 
@@ -155,6 +247,7 @@ def analizar_celda_numero(celda):
 
     numero = {
         "num": int(coincidencia.group(1)),
+        "id": int(RE_NUMERO_ID.search(enlace["href"]).group(1)),
         "portada": portada,
         "link": url_absoluta(enlace["href"]),
     }
@@ -310,7 +403,10 @@ def analizar_anuncio_suplemento(sopa):
     if enlace is None:
         return None
 
-    datos = {"link": url_absoluta(enlace["href"])}
+    datos = {
+        "id": int(RE_SUPLEMENTO.search(enlace["href"]).group(1)),
+        "link": url_absoluta(enlace["href"]),
+    }
 
     cabecera = bloque.find("h4")
     if cabecera is not None:
@@ -455,32 +551,26 @@ def ordenar_numeros(volumen):
     )
 
 
-def crear_carpeta_numero(volumen, numero, opciones):
-    """Crea la carpeta de un número; devuelve su ruta sólo si no existía."""
-    ruta = os.path.join(
+def ruta_carpeta_numero(volumen, numero, opciones):
+    """Ruta de la carpeta de un número dentro del destino."""
+    return os.path.join(
         opciones.destino,
         nombre_carpeta_volumen(volumen),
         nombre_carpeta_numero(numero),
     )
+
+
+def asegurar_carpeta(ruta, opciones):
+    """Crea la carpeta si falta; indica si ha habido que crearla.
+
+    Las carpetas se abren al descargar, y sólo las de aquello que se descarga,
+    para no sembrar el destino de directorios vacíos.
+    """
     if os.path.isdir(ruta):
-        return None
+        return False
     if not opciones.simulacion:
         os.makedirs(ruta)
-    return ruta
-
-
-def crear_arbol(volumenes, opciones):
-    """Crea la estructura de carpetas de volúmenes y números en el destino."""
-    creadas = 0
-
-    for volumen in volumenes:
-        for numero in volumen["numeros"]:
-            ruta = crear_carpeta_numero(volumen, numero, opciones)
-            if ruta is not None:
-                creadas += 1
-                informar(opciones, "  creada %s" % ruta)
-
-    return creadas
+    return True
 
 
 def ruta_mapa(opciones):
@@ -546,6 +636,7 @@ def registrar_suplemento(volumen, principal, datos):
     if "nombre" in datos:
         entrada["nombre"] = datos["nombre"]
     entrada["principal"] = principal["num"]
+    entrada["id"] = datos["id"]
     if "portada" in datos:
         entrada["portada"] = datos["portada"]
     entrada["link"] = datos["link"]
@@ -599,7 +690,7 @@ def fusionar_mapa(volumenes, anterior):
 
 
 def mapear_indice(opciones):
-    """Descarga el índice general, prepara las carpetas y escribe el mapa."""
+    """Descarga el índice general de volúmenes y escribe el mapa."""
     informar(opciones, "Descargando %s ..." % URL_INDICE)
     volumenes = analizar_indice_volumenes(descargar(URL_INDICE))
 
@@ -621,9 +712,6 @@ def mapear_indice(opciones):
             opciones,
             "Conservadas %d entradas ya mapeadas del mapa anterior." % conservados,
         )
-
-    creadas = crear_arbol(volumenes, opciones)
-    informar(opciones, "Creadas %d carpetas de números nuevas." % creadas)
 
     ruta = escribir_mapa({"volumenes": volumenes}, opciones)
     informar(opciones, "Escrito %s" % ruta)
@@ -663,6 +751,21 @@ def mapear_numero(opciones):
             % (opciones.vol, opciones.num)
         )
 
+    codigo = mapear_entrada(volumen, numero, opciones)
+    if codigo:
+        return codigo
+
+    ruta = escribir_mapa(mapa, opciones)
+    informar(opciones, "Escrito %s" % ruta)
+
+    if opciones.simulacion:
+        informar(opciones, "(simulación: no se ha escrito nada en el disco)")
+
+    return 0
+
+
+def mapear_entrada(volumen, numero, opciones):
+    """Rellena la entrada de un número a partir de su página."""
     informar(opciones, "Descargando %s ..." % numero["link"])
     articulos, entero, suplemento = analizar_pagina_numero(descargar(numero["link"]))
 
@@ -707,16 +810,211 @@ def mapear_numero(opciones):
                 nombre_carpeta_numero(entrada),
             ),
         )
-        ruta = crear_carpeta_numero(volumen, entrada, opciones)
-        if ruta is not None:
-            informar(opciones, "  creada %s" % ruta)
 
-    ruta = escribir_mapa(mapa, opciones)
-    informar(opciones, "Escrito %s" % ruta)
+    return 0
 
+
+# --------------------------------------------------------------------------
+# Descarga
+# --------------------------------------------------------------------------
+
+
+def guardar(url, carpeta, nombre, opciones, resumen):
+    """Descarga una URL en la carpeta dada, con el nombre dado y su extensión.
+
+    Devuelve el estado: 'existe', 'guardado', 'reservado' o 'error'.
+    """
+    previo = fichero_existente(carpeta, nombre)
+    if previo is not None:
+        resumen["existe"] += 1
+        return "existe"
+
+    try:
+        respuesta = pedir(url, flujo=True)
+    except requests.RequestException as fallo:
+        avisar("no se ha podido descargar %s: %s" % (url, fallo))
+        resumen["error"] += 1
+        return "error"
+
+    with respuesta:
+        # los números más recientes están reservados a los socios: la página
+        # se consulta, pero el PDF redirige al formulario de acceso
+        if es_muro(respuesta):
+            resumen["reservado"] += 1
+            informar(opciones, "  reservado a socios: %s" % nombre)
+            return "reservado"
+
+        ruta = os.path.join(carpeta, nombre + extension_de(respuesta))
+        if opciones.simulacion:
+            resumen["guardado"] += 1
+            informar(opciones, "  se guardaría %s" % ruta)
+            return "guardado"
+
+        try:
+            with open(ruta, "wb") as fichero:
+                for trozo in respuesta.iter_content(64 * 1024):
+                    fichero.write(trozo)
+        except requests.RequestException as fallo:
+            avisar("se ha cortado la descarga de %s: %s" % (url, fallo))
+            if os.path.exists(ruta):
+                os.remove(ruta)  # no dejar un fichero a medias
+            resumen["error"] += 1
+            return "error"
+
+    resumen["guardado"] += 1
+    informar(opciones, "  %s" % ruta)
+    return "guardado"
+
+
+def descargar_articulos(entradas, carpeta, opciones, resumen, usados):
+    """Recorre el árbol y descarga cada artículo que tenga enlace."""
+    for entrada in entradas:
+        if "articulos" in entrada:
+            descargar_articulos(entrada["articulos"], carpeta, opciones, resumen, usados)
+            continue
+
+        if "link" not in entrada:
+            continue  # p. ej. un «Acerca de la portada» que sólo trae texto
+
+        nombre = nombre_libre(carpeta, sanear_nombre(entrada["nombre"]), usados)
+        guardar(entrada["link"], carpeta, nombre, opciones, resumen)
+
+
+def descargar_numero(volumen, numero, opciones, resumen):
+    """Descarga la portada y el contenido de un número en su carpeta."""
+    etiqueta = "Vol %02d (%d), número %s" % (
+        volumen["num"],
+        volumen["año"],
+        nombre_carpeta_numero(numero),
+    )
+    informar(opciones, etiqueta)
+
+    if "articulos" not in numero:
+        informar(opciones, "  sin mapear todavía; se mapea primero")
+        codigo = mapear_entrada(volumen, numero, opciones)
+        if codigo:
+            return codigo
+        resumen["mapeados"] += 1
+
+    carpeta = ruta_carpeta_numero(volumen, numero, opciones)
+    if asegurar_carpeta(carpeta, opciones):
+        informar(opciones, "  creada %s" % carpeta)
+
+    if numero.get("portada"):
+        guardar(numero["portada"], carpeta, FICHERO_PORTADA, opciones, resumen)
+
+    if opciones.entero and numero.get("link_todo"):
+        estado = guardar(numero["link_todo"], carpeta, FICHERO_ENTERO, opciones, resumen)
+        if estado in ("guardado", "existe"):
+            return 0
+        # reservado a socios o caído: los artículos sueltos suelen seguir ahí
+        informar(opciones, "  no se ha podido traer entero; se baja por partes")
+    elif opciones.entero:
+        informar(opciones, "  no se ofrece entero; se baja por partes")
+
+    descargar_articulos(numero["articulos"], carpeta, opciones, resumen, set())
+    return 0
+
+
+def nuevo_resumen():
+    """Contadores de una tanda de descargas."""
+    return dict(guardado=0, existe=0, reservado=0, error=0, mapeados=0)
+
+
+def contar_resumen(opciones, resumen):
+    """Informa de cómo ha ido la tanda."""
+    informar(
+        opciones,
+        "Ficheros: %d nuevos, %d ya estaban, %d reservados a socios, %d fallidos."
+        % (
+            resumen["guardado"],
+            resumen["existe"],
+            resumen["reservado"],
+            resumen["error"],
+        ),
+    )
+    if resumen["mapeados"]:
+        informar(opciones, "Se han mapeado %d números por el camino." % resumen["mapeados"])
     if opciones.simulacion:
         informar(opciones, "(simulación: no se ha escrito nada en el disco)")
 
+
+def confirmar(pregunta):
+    """Pide una confirmación por consola; un stdin cerrado equivale a que no."""
+    try:
+        respuesta = input("%s [s/N] " % pregunta)
+    except EOFError:
+        return False
+    return respuesta.strip().lower() in ("s", "si", "sí")
+
+
+def descargar_uno(opciones):
+    """Descarga el número indicado con --vol, --num y, si acaso, --sup."""
+    mapa = leer_mapa(opciones)
+    if mapa is None:
+        return error(
+            "no existe %s; ejecuta antes --mapa para crearlo" % ruta_mapa(opciones)
+        )
+
+    volumen, numero = buscar_numero(mapa, opciones.vol, opciones.num, opciones.sup)
+    if numero is None:
+        if opciones.sup:
+            return error(
+                "el mapa no recoge ningún suplemento del volumen %d, número %d; "
+                "mapea antes ese número para descubrirlo"
+                % (opciones.vol, opciones.num)
+            )
+        return error(
+            "el mapa no contiene el volumen %d, número %d"
+            % (opciones.vol, opciones.num)
+        )
+
+    resumen = nuevo_resumen()
+    codigo = descargar_numero(volumen, numero, opciones, resumen)
+    if codigo:
+        return codigo
+
+    if resumen["mapeados"]:
+        escribir_mapa(mapa, opciones)
+
+    contar_resumen(opciones, resumen)
+    return 0
+
+
+def descargar_todo(opciones):
+    """Descarga el archivo entero, previa confirmación."""
+    mapa = leer_mapa(opciones)
+    if mapa is None:
+        return error(
+            "no existe %s; ejecuta antes --mapa para crearlo" % ruta_mapa(opciones)
+        )
+
+    numeros = [
+        (volumen, numero)
+        for volumen in mapa["volumenes"]
+        for numero in volumen["numeros"]
+    ]
+    pendientes = sum(1 for _, numero in numeros if "articulos" not in numero)
+
+    # la simulación no toca el disco, así que no hay nada que confirmar
+    if not opciones.simulacion:
+        aviso = "Se van a descargar %d números" % len(numeros)
+        if pendientes:
+            aviso += ", mapeando antes %d de ellos" % pendientes
+        aviso += ". Esto tardará un buen rato. ¿Seguimos?"
+        if not confirmar(aviso):
+            informar(opciones, "Cancelado.")
+            return 0
+
+    resumen = nuevo_resumen()
+    for volumen, numero in numeros:
+        codigo = descargar_numero(volumen, numero, opciones, resumen)
+        if codigo:
+            return codigo
+        if resumen["mapeados"]:
+            escribir_mapa(mapa, opciones)  # no perder el mapeo si se interrumpe
+
+    contar_resumen(opciones, resumen)
     return 0
 
 
@@ -760,6 +1058,16 @@ def principal(argumentos):
         help="número dentro del volumen indicado con --vol",
     )
     analizador.add_option(
+        "-D", "--descarga",
+        action="store_true", default=False,
+        help="descarga el número indicado con --vol/--num, o todo el archivo",
+    )
+    analizador.add_option(
+        "-e", "--entero",
+        action="store_true", default=False,
+        help="baja el número completo de una pieza cuando la revista lo ofrezca",
+    )
+    analizador.add_option(
         "-s", "--sup",
         action="store_true", default=False,
         help="actúa sobre el suplemento de ese número, no sobre el número",
@@ -791,16 +1099,23 @@ def principal(argumentos):
     if opciones.sup and opciones.vol is None:
         analizador.error("--sup necesita que se indiquen --vol y --num")
 
-    if not opciones.mapa and opciones.vol is None:
+    if opciones.entero and not opciones.descarga:
+        analizador.error("--entero sólo tiene sentido junto a --descarga")
+
+    if not opciones.mapa and not opciones.descarga:
+        if opciones.vol is not None:
+            analizador.error("indica qué hacer con ese número: --mapa o --descarga")
         analizador.print_help()
         return 0
 
     try:
+        if opciones.descarga:
+            if opciones.vol is None:
+                return descargar_todo(opciones)
+            return descargar_uno(opciones)
         if opciones.vol is None:
             return mapear_indice(opciones)
-        if opciones.mapa:
-            return mapear_numero(opciones)
-        return error("la descarga de números todavía no está implementada")
+        return mapear_numero(opciones)
     except requests.RequestException as fallo:
         return error("no se ha podido descargar el sitio: %s" % fallo)
 
