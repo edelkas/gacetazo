@@ -39,6 +39,7 @@ python gaceta.py --descarga                    # descarga todo (pide confirmaci�
 | `-v N`, `--vol=N` | Volumen sobre el que actuar |
 | `-N N`, `--num=N` | Número dentro de ese volumen |
 | `-s`, `--sup` | Actúa sobre el suplemento de ese número |
+| `-c VALOR`, `--cookie=VALOR` | Cookie `PHPSESSID` de una sesión de socio |
 | `-d DIR`, `--destino=DIR` | Carpeta raíz del archivo (por defecto, la actual) |
 | `-n`, `--simulacion` | Informa de lo que haría, sin escribir nada |
 | `-q`, `--silencioso` | Oculta la información de progreso |
@@ -84,11 +85,26 @@ Nada se descarga dos veces: si el fichero ya está y su MD5 cuadra con el
 anotado, se salta. Se vuelve a bajar, sustituyendo lo que hubiera, cuando el
 MD5 no cuadra (fichero corrupto o a medias) o cuando no hay ninguno anotado.
 
+## Material reservado a los socios
+
 Los números más recientes están reservados a los socios de la RSME. Su página
 se consulta y se mapea con normalidad, pero el PDF redirige al formulario de
 acceso; esas descargas se cuentan aparte como *reservadas* y no se guarda nada
 en su lugar. Con `--entero`, si el ejemplar completo está reservado se
 recurre a los artículos sueltos, que a menudo sí están abiertos.
+
+La revista reconoce al socio por la cookie de sesión `PHPSESSID`. Basta con
+copiarla del navegador y pasarla una vez:
+
+```
+python gaceta.py --descarga --vol 29 --num 1 --cookie 2cc72e32b8cd...
+```
+
+Sólo su valor, sin el `PHPSESSID=` delante. Se admite una cadena hexadecimal
+de entre 22 y 256 caracteres (la revista usa 32), y se rechaza cualquier otra
+cosa. La cookie queda anotada en `sitemap.json` y las siguientes ejecuciones la
+reutilizan sin necesidad de repetirla. Si la revista deja de reconocerla, se
+avisa por pantalla, se borra del mapa y la descarga continúa como visitante.
 
 ## Formato de `sitemap.json`
 
@@ -146,4 +162,4 @@ sección. Hoy el archivo completo se analiza sin un solo aviso.
 - [x] Índice de artículos de un número o suplemento: 3 suplementos y ~1960
       artículos en total.
 - [x] Descarga y organización de portadas, artículos y números enteros.
-- [ ] Acceso a los números reservados a los socios.
+- [x] Acceso a los números reservados a los socios, mediante cookie de sesión.

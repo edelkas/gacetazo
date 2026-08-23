@@ -59,6 +59,15 @@ AGENTE_USUARIO = (
     "+https://gaceta.rsme.es/) Python-requests"
 )
 
+# La revista reconoce al socio por su cookie de sesión de PHP. Suele ser de 32
+# dígitos hexadecimales, pero la longitud es configurable en el servidor.
+COOKIE_SESION = "PHPSESSID"
+RE_COOKIE = re.compile(r"^[0-9a-fA-F]{22,256}$")
+
+# una única sesión para todas las peticiones, que es quien lleva la cookie
+SESION = requests.Session()
+SESION.headers["User-Agent"] = AGENTE_USUARIO
+
 # guiones que la revista usa indistintamente en los rangos de páginas
 GUIONES = "-‐-―"
 
@@ -119,14 +128,26 @@ def error(mensaje):
 
 def pedir(url, flujo=False):
     """Pide una URL y devuelve la respuesta, ya comprobada."""
-    respuesta = requests.get(
-        url,
-        headers={"User-Agent": AGENTE_USUARIO},
-        timeout=60,
-        stream=flujo,
-    )
+    respuesta = SESION.get(url, timeout=60, stream=flujo)
     respuesta.raise_for_status()
     return respuesta
+
+
+def usar_cookie(valor):
+    """Empieza a presentarse como socio con esa cookie de sesión."""
+    SESION.cookies.set(COOKIE_SESION, valor, domain=urlparse(URL_BASE).hostname)
+
+
+def descartar_cookie(opciones):
+    """Deja de usar la cookie: la revista no la ha reconocido."""
+    if not opciones.cookie_activa:
+        return
+    avisar(
+        "la revista no reconoce la cookie de sesión: será inválida o habrá "
+        "caducado. Se descarta y se sigue como visitante"
+    )
+    SESION.cookies.clear()
+    opciones.cookie_activa = None
 
 
 def descargar(url):
@@ -609,9 +630,35 @@ def leer_mapa(opciones):
         return json.load(fichero)
 
 
+def preparar_cookie(mapa, opciones):
+    """Elige la cookie a usar: la de la línea de órdenes o la que guarda el mapa."""
+    valor = opciones.cookie or (mapa or {}).get("cookie")
+    opciones.cookie_activa = valor
+    if valor:
+        usar_cookie(valor)
+        informar(opciones, "Sesión de socio activa.")
+    return valor
+
+
+def anotar_cookie(mapa, opciones):
+    """Guarda la cookie en el mapa, o la retira si ha dejado de valer."""
+    if opciones.cookie_activa:
+        mapa["cookie"] = opciones.cookie_activa
+    else:
+        mapa.pop("cookie", None)
+
+
 def escribir_mapa(mapa, opciones):
     """Escribe el mapa en la carpeta de destino."""
     ruta = ruta_mapa(opciones)
+    anotar_cookie(mapa, opciones)
+
+    # la cookie va delante, que si no queda sepultada bajo los volúmenes
+    contenido = {}
+    if mapa.get("cookie"):
+        contenido["cookie"] = mapa["cookie"]
+    contenido.update(mapa)
+    mapa = contenido
 
     if not opciones.simulacion:
         if not os.path.isdir(opciones.destino):
@@ -713,6 +760,9 @@ def fusionar_mapa(volumenes, anterior):
 
 def mapear_indice(opciones):
     """Descarga el índice general de volúmenes y escribe el mapa."""
+    anterior = leer_mapa(opciones)
+    preparar_cookie(anterior, opciones)
+
     informar(opciones, "Descargando %s ..." % URL_INDICE)
     volumenes = analizar_indice_volumenes(descargar(URL_INDICE))
 
@@ -728,7 +778,7 @@ def mapear_indice(opciones):
         "Encontrados %d volúmenes y %d números." % (len(volumenes), total),
     )
 
-    conservados = fusionar_mapa(volumenes, leer_mapa(opciones))
+    conservados = fusionar_mapa(volumenes, anterior)
     if conservados:
         informar(
             opciones,
@@ -759,6 +809,8 @@ def mapear_numero(opciones):
         return error(
             "no existe %s; ejecuta antes --mapa para crearlo" % ruta_mapa(opciones)
         )
+
+    preparar_cookie(mapa, opciones)
 
     volumen, numero = buscar_numero(mapa, opciones.vol, opciones.num, opciones.sup)
     if numero is None:
@@ -894,6 +946,8 @@ def guardar(url, carpeta, nombre, opciones, resumen, entrada=None):
         # los números más recientes están reservados a los socios: la página
         # se consulta, pero el PDF redirige al formulario de acceso
         if es_muro(respuesta):
+            # si veníamos autenticados, la cookie ya no sirve para nada
+            descartar_cookie(opciones)
             resumen["reservado"] += 1
             informar(opciones, "  reservado a socios: %s" % nombre)
             return "reservado"
@@ -1036,6 +1090,8 @@ def descargar_uno(opciones):
             "no existe %s; ejecuta antes --mapa para crearlo" % ruta_mapa(opciones)
         )
 
+    preparar_cookie(mapa, opciones)
+
     volumen, numero = buscar_numero(mapa, opciones.vol, opciones.num, opciones.sup)
     if numero is None:
         if opciones.sup:
@@ -1069,6 +1125,8 @@ def descargar_todo(opciones):
         return error(
             "no existe %s; ejecuta antes --mapa para crearlo" % ruta_mapa(opciones)
         )
+
+    preparar_cookie(mapa, opciones)
 
     numeros = [
         (volumen, numero)
@@ -1154,6 +1212,12 @@ def principal(argumentos):
         help="actúa sobre el suplemento de ese número, no sobre el número",
     )
     analizador.add_option(
+        "-c", "--cookie",
+        metavar="VALOR",
+        help="valor de la cookie PHPSESSID de una sesión de socio, para "
+             "acceder al material reservado; se recuerda en el mapa",
+    )
+    analizador.add_option(
         "-d", "--destino",
         metavar="DIR", default=".",
         help="carpeta raíz del archivo [por defecto: %default]",
@@ -1170,9 +1234,16 @@ def principal(argumentos):
     )
 
     opciones, sueltos = analizador.parse_args(argumentos)
+    opciones.cookie_activa = None
 
     if sueltos:
         analizador.error("argumento inesperado: %s" % sueltos[0])
+
+    if opciones.cookie is not None and not RE_COOKIE.match(opciones.cookie):
+        analizador.error(
+            "la cookie debe ser una cadena hexadecimal de entre 22 y 256 "
+            "caracteres (sin el «PHPSESSID=» delante)"
+        )
 
     if (opciones.vol is None) != (opciones.num is None):
         analizador.error("--vol y --num deben indicarse juntos")
