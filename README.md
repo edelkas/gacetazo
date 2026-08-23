@@ -87,6 +87,25 @@ Nada se descarga dos veces: si el fichero ya está y su MD5 cuadra con el
 anotado, se salta. Se vuelve a bajar, sustituyendo lo que hubiera, cuando el
 MD5 no cuadra (fichero corrupto o a medias) o cuando no hay ninguno anotado.
 
+### Barra de progreso
+
+Mientras se descarga, la última línea de la consola lleva una barra de estado
+que se refresca una vez por segundo:
+
+```
+[12/96] Vol 03 (2000), número 1 · 7 de 14 · 1.2 MB (total 4.0 MB) · 1.4 MB/s
+```
+
+De izquierda a derecha: el número que se está bajando (con su posición, si se
+descarga todo el archivo), los ficheros hechos sobre los previstos, lo que
+lleva el fichero actual y el total de la tanda, y la velocidad media de los
+últimos cinco segundos.
+
+Los mensajes y avisos se imprimen siempre *por encima* de la barra, que se
+mantiene abajo del todo sin dejar copias sueltas por la pantalla. La barra se
+desactiva sola cuando la salida no es una consola (redirigida a un fichero o a
+otro programa) y con `--silencioso`.
+
 ## Material reservado a los socios
 
 Los números más recientes están reservados a los socios de la RSME. Su página

@@ -10,7 +10,10 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import sys
+import time
+from collections import deque
 from optparse import IndentedHelpFormatter, OptionParser
 from urllib.parse import urljoin, urlparse, urlunparse
 
@@ -105,6 +108,170 @@ RE_PAGINAS_ARTICULO = re.compile(
 )
 
 
+def habilitar_ansi():
+    """Enciende las secuencias de escape en las consolas de Windows."""
+    if os.name != "nt":
+        return True
+    try:
+        import ctypes
+
+        kernel = ctypes.windll.kernel32
+        modo = ctypes.c_uint()
+        asa = kernel.GetStdHandle(-11)  # STD_OUTPUT_HANDLE
+        if not kernel.GetConsoleMode(asa, ctypes.byref(modo)):
+            return False
+        # ENABLE_VIRTUAL_TERMINAL_PROCESSING
+        return bool(kernel.SetConsoleMode(asa, modo.value | 0x0004))
+    except Exception:
+        return False
+
+
+def formato_bytes(cantidad):
+    """Tamaño en MB con un decimal, que es la escala de estos ficheros."""
+    return "%.1f MB" % (cantidad / (1024.0 * 1024.0))
+
+
+class Barra:
+    """Barra de estado anclada a la última línea de la consola.
+
+    Cualquier mensaje se escribe por encima de ella: se borra la línea, se
+    suelta el texto y se vuelve a pintar la barra debajo. Así nunca quedan
+    barras huérfanas por la pantalla.
+    """
+
+    INTERVALO = 1.0  # segundos entre repintados
+    VENTANA = 5.0  # segundos que promedia la velocidad
+    MUESTREO = 0.2  # cada cuánto se anota una marca para la velocidad
+
+    BORRAR_LINEA = "\r\033[2K"
+
+    def __init__(self):
+        self.activa = False
+        self.pintada = False
+        self.contexto = ""
+        self.hechos = 0
+        self.total = 0
+        self.bytes_fichero = 0
+        self.bytes_total = 0
+        self.marcas = deque()
+        self.ultimo_pintado = 0.0
+        self.ultima_marca = 0.0
+
+    # -- control ----------------------------------------------------------
+
+    def arrancar(self, opciones):
+        """Activa la barra si la consola la admite y no se pidió silencio."""
+        self.activa = (
+            not opciones.silencioso
+            and sys.stdout.isatty()
+            and habilitar_ansi()
+        )
+        self.hechos = self.total = 0
+        self.bytes_fichero = self.bytes_total = 0
+        self.marcas.clear()
+
+    def parar(self):
+        """Retira la barra y deja la consola como estaba."""
+        if self.activa and self.pintada:
+            sys.stdout.write(self.BORRAR_LINEA)
+            sys.stdout.flush()
+        self.pintada = False
+        self.activa = False
+
+    # -- contenido --------------------------------------------------------
+
+    def situar(self, contexto):
+        """Fija el rótulo de lo que se está descargando ahora mismo."""
+        self.contexto = contexto
+        self.refrescar(forzar=True)
+
+    def ampliar(self, cuantos):
+        """Suma ficheros al total previsto, que se va descubriendo sobre la marcha."""
+        self.total += cuantos
+        self.refrescar(forzar=True)
+
+    def abrir_fichero(self):
+        """Empieza a contar un fichero nuevo."""
+        self.bytes_fichero = 0
+
+    def avanzar(self, cuantos):
+        """Anota los bytes recién recibidos."""
+        self.bytes_fichero += cuantos
+        self.bytes_total += cuantos
+
+        ahora = time.monotonic()
+        if ahora - self.ultima_marca >= self.MUESTREO:
+            self.marcas.append((ahora, self.bytes_total))
+            self.ultima_marca = ahora
+        self.refrescar()
+
+    def cerrar_fichero(self):
+        """Da por terminado un fichero, se haya bajado o no."""
+        self.hechos += 1
+        self.refrescar(forzar=True)
+
+    # -- pintado ----------------------------------------------------------
+
+    def velocidad(self, ahora):
+        """Ritmo medio de los últimos segundos, o None si aún no se sabe."""
+        while len(self.marcas) > 1 and ahora - self.marcas[0][0] > self.VENTANA:
+            self.marcas.popleft()
+        if len(self.marcas) < 2:
+            return None
+        inicio, bytes_inicio = self.marcas[0]
+        fin, bytes_fin = self.marcas[-1]
+        if fin <= inicio:
+            return None
+        return (bytes_fin - bytes_inicio) / (fin - inicio)
+
+    def texto(self, ahora):
+        """Compone la línea de estado."""
+        piezas = []
+        if self.contexto:
+            piezas.append(self.contexto)
+        piezas.append("%d de %d" % (self.hechos, self.total))
+        piezas.append(
+            "%s (total %s)"
+            % (formato_bytes(self.bytes_fichero), formato_bytes(self.bytes_total))
+        )
+        ritmo = self.velocidad(ahora)
+        if ritmo is not None:
+            piezas.append("%s/s" % formato_bytes(ritmo))
+
+        linea = " · ".join(piezas)
+        ancho = shutil.get_terminal_size((80, 24)).columns - 1
+        return linea[:ancho]
+
+    def refrescar(self, forzar=False):
+        """Repinta la barra, como mucho una vez por segundo."""
+        if not self.activa:
+            return
+        ahora = time.monotonic()
+        if not forzar and ahora - self.ultimo_pintado < self.INTERVALO:
+            return
+        self.ultimo_pintado = ahora
+        sys.stdout.write(self.BORRAR_LINEA + self.texto(ahora))
+        sys.stdout.flush()
+        self.pintada = True
+
+    def escribir(self, mensaje, flujo=None):
+        """Suelta un mensaje por encima de la barra y la vuelve a pintar."""
+        destino = flujo or sys.stdout
+        if not self.activa:
+            destino.write(mensaje + "\n")
+            destino.flush()
+            return
+
+        sys.stdout.write(self.BORRAR_LINEA)
+        sys.stdout.flush()
+        destino.write(mensaje + "\n")
+        destino.flush()
+        self.refrescar(forzar=True)
+
+
+BARRA = Barra()
+
+
 class FormateadorAyuda(IndentedHelpFormatter):
     """Traduce al español los rótulos fijos que optparse escribe en inglés."""
 
@@ -120,17 +287,17 @@ class FormateadorAyuda(IndentedHelpFormatter):
 def informar(opciones, mensaje):
     """Muestra información de progreso salvo que se pida silencio."""
     if not opciones.silencioso:
-        print(mensaje)
+        BARRA.escribir(mensaje)
 
 
 def avisar(mensaje):
     """Advierte de una anomalía del documento. Siempre se muestra."""
-    print("aviso: %s" % mensaje)
+    BARRA.escribir("aviso: %s" % mensaje)
 
 
 def error(mensaje):
     """Escribe un error en la salida de errores y devuelve el código de salida."""
-    sys.stderr.write("error: %s\n" % mensaje)
+    BARRA.escribir("error: %s" % mensaje, sys.stderr)
     return 1
 
 
@@ -1011,6 +1178,15 @@ def guardar(url, carpeta, nombre, opciones, resumen, entrada=None):
     el tamaño y el MD5 de lo descargado. Devuelve el estado: 'existe',
     'guardado', 'reservado' o 'error'.
     """
+    BARRA.abrir_fichero()
+    try:
+        return intentar_guardar(url, carpeta, nombre, opciones, resumen, entrada)
+    finally:
+        BARRA.cerrar_fichero()
+
+
+def intentar_guardar(url, carpeta, nombre, opciones, resumen, entrada):
+    """Lo que hace guardar(), sin la contabilidad de la barra."""
     previo = fichero_existente(carpeta, nombre)
 
     if previo is None and entrada is not None:
@@ -1055,6 +1231,7 @@ def guardar(url, carpeta, nombre, opciones, resumen, entrada=None):
                     fichero.write(trozo)
                     digest.update(trozo)
                     tamaño += len(trozo)
+                    BARRA.avanzar(len(trozo))
         except requests.RequestException as fallo:
             avisar("se ha cortado la descarga de %s: %s" % (url, fallo))
             if os.path.exists(ruta):
@@ -1095,13 +1272,33 @@ def descargar_articulos(entradas, carpeta, opciones, resumen, usados):
         guardar(entrada["link"], carpeta, nombre, opciones, resumen, entrada)
 
 
-def descargar_numero(volumen, numero, opciones, resumen):
+def contar_descargables(entradas):
+    """Hojas del árbol que tienen algo que descargar."""
+    return sum(
+        contar_descargables(entrada["articulos"])
+        if "articulos" in entrada
+        else (1 if "link" in entrada else 0)
+        for entrada in entradas
+    )
+
+
+def ficheros_previstos(numero, opciones):
+    """Cuántos ficheros se van a intentar bajar de un número."""
+    previstos = 1 if numero.get("portada") else 0
+    if opciones.entero and numero.get("link_todo"):
+        return previstos + 1
+    return previstos + contar_descargables(numero["articulos"])
+
+
+def descargar_numero(volumen, numero, opciones, resumen, posicion=""):
     """Descarga la portada y el contenido de un número en su carpeta."""
     etiqueta = "Vol %02d (%d), número %s" % (
         volumen["num"],
         volumen["año"],
         nombre_carpeta_numero(numero),
     )
+    if posicion:
+        etiqueta = "%s %s" % (posicion, etiqueta)
     informar(opciones, etiqueta)
 
     if "articulos" not in numero:
@@ -1110,6 +1307,9 @@ def descargar_numero(volumen, numero, opciones, resumen):
         if codigo:
             return codigo
         resumen["mapeados"] += 1
+
+    BARRA.situar(etiqueta)
+    BARRA.ampliar(ficheros_previstos(numero, opciones))
 
     carpeta = ruta_carpeta_numero(volumen, numero, opciones)
     if asegurar_carpeta(carpeta, opciones):
@@ -1126,6 +1326,7 @@ def descargar_numero(volumen, numero, opciones, resumen):
             return 0
         # reservado a socios o caído: los artículos sueltos suelen seguir ahí
         informar(opciones, "  no se ha podido traer entero; se baja por partes")
+        BARRA.ampliar(contar_descargables(numero["articulos"]))
     elif opciones.entero:
         informar(opciones, "  no se ofrece entero; se baja por partes")
 
@@ -1196,7 +1397,11 @@ def descargar_uno(opciones):
         )
 
     resumen = nuevo_resumen()
-    codigo = descargar_numero(volumen, numero, opciones, resumen)
+    BARRA.arrancar(opciones)
+    try:
+        codigo = descargar_numero(volumen, numero, opciones, resumen)
+    finally:
+        BARRA.parar()
     if codigo:
         return codigo
 
@@ -1237,12 +1442,18 @@ def descargar_todo(opciones):
             return 0
 
     resumen = nuevo_resumen()
-    for volumen, numero in numeros:
-        codigo = descargar_numero(volumen, numero, opciones, resumen)
-        if codigo:
-            return codigo
-        # se guarda número a número para no perder el avance si se interrumpe
-        escribir_mapa(mapa, opciones)
+    BARRA.arrancar(opciones)
+    try:
+        for orden, (volumen, numero) in enumerate(numeros, 1):
+            codigo = descargar_numero(
+                volumen, numero, opciones, resumen, "[%d/%d]" % (orden, len(numeros))
+            )
+            if codigo:
+                return codigo
+            # se guarda número a número para no perder el avance si se interrumpe
+            escribir_mapa(mapa, opciones)
+    finally:
+        BARRA.parar()
 
     contar_resumen(opciones, resumen)
     return 0
