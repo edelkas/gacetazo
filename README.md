@@ -196,11 +196,33 @@ la A a la Z (las letras que nadie estrena salen apagadas). Cada autor se
 resume como en las secciones, y su página lista sus artículos del más reciente
 al más antiguo.
 
-La separación es mecánica, así que no acierta siempre: un apellido con `y`
-dentro (José Echegaray y Eizaguirre), una institución con `e` (Sociedad de
-Estadística e Investigación Operativa) o una coletilla (`Joan Cerdà, editor`)
-se parten en dos. Tampoco reúne al mismo autor firmado de dos maneras
-distintas (María Gaspar y María Gaspar Alonso-Vega).
+Hay nombres que llevan dentro una coma o una conjunción y que la separación
+partiría donde no debe: un apellido con `y` (José Echegaray y Eizaguirre), una
+institución con `e` (Sociedad de Estadística e Investigación Operativa). Esos
+se apartan enteros antes de cortar, según la tabla de la clave `excepciones`
+de `sitemap.json`:
+
+```jsonc
+"excepciones": [
+  "Comisión de Educación, Cultura y Deporte del Senado",
+  "José Echegaray y Eizaguirre",
+  "Redacción de la sección de Problemas y Soluciones",
+  "Sociedad de Estadística e Investigación Operativa"
+]
+```
+
+La primera vez, `--web` anota ahí la tabla que trae el programa; a partir de
+entonces manda la del fichero, que puede ampliarse o vaciarse a mano. Basta con
+que el nombre aparezca dentro del campo `autor`, y da igual cómo se acentúen
+las mayúsculas.
+
+Aun así la separación no lo arregla todo: una coletilla (`Joan Cerdà, editor`)
+sigue dando un autor de más, y el mismo autor firmado de dos maneras (María
+Gaspar y María Gaspar Alonso-Vega) sigue contando por dos.
+
+Al rehacer el sitio, las páginas de autores o secciones que ya no existan se
+quedan en su carpeta sin que nadie las enlace; conviene vaciar `autores/` y
+`secciones/` si el nombre de alguno cambia.
 
 ## Material reservado a los socios
 

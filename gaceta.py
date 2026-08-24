@@ -39,6 +39,18 @@ RUTA_AUTORES = CARPETA_AUTORES + "/" + NOMBRE_PAGINA
 # los nombres que no empiezan por letra del abecedario se archivan juntos
 LETRA_RESTO = "#"
 
+# Nombres que la separación por comas y conjunciones partiría donde no
+# debe: un apellido con «y» dentro, una institución con «e», una sección
+# cuyo nombre lleva «y». Se apartan enteros antes de cortar. La tabla se
+# copia a sitemap.json la primera vez, y de ahí se puede retocar.
+CLAVE_EXCEPCIONES = "excepciones"
+EXCEPCIONES = [
+    "Comisión de Educación, Cultura y Deporte del Senado",
+    "José Echegaray y Eizaguirre",
+    "Redacción de la sección de Problemas y Soluciones",
+    "Sociedad de Estadística e Investigación Operativa",
+]
+
 # los DOI se enlazan a traves del resolutor oficial
 URL_DOI = "https://www.doi.org/"
 
@@ -131,6 +143,8 @@ RE_DOI = re.compile(r"DOI:\s*(\S+)")
 # la revista lista los autores separados por comas y con la conjunción al
 # final, que ante palabra que empieza por i- se escribe "e"
 RE_AUTORES = re.compile(r"\s*,\s*|\s+[ye]\s+")
+# marca con la que se aparta un nombre para que no lo parta la separación
+MARCA = "\x00%d\x00"
 RE_PAGINAS_ARTICULO = re.compile(
     r"P[áa]gs?\.?\s*(\d+)\s*(?:[%s]\s*(\d+))?" % GUIONES
 )
@@ -935,10 +949,11 @@ def escribir_mapa(mapa, opciones):
     ruta = ruta_mapa(opciones)
     anotar_cookie(mapa, opciones)
 
-    # la cookie va delante, que si no queda sepultada bajo los volúmenes
+    # lo corto va delante, que si no queda sepultado bajo los volúmenes
     contenido = {}
-    if mapa.get("cookie"):
-        contenido["cookie"] = mapa["cookie"]
+    for clave in ("cookie", CLAVE_EXCEPCIONES):
+        if mapa.get(clave) is not None:
+            contenido[clave] = mapa[clave]
     contenido.update(mapa)
     mapa = contenido
 
@@ -1793,7 +1808,7 @@ def enlaces_autores(articulo, carpeta, indices):
     """Los autores del artículo, cada uno enlazado a su página."""
     paginas = (indices or {}).get("autores") or {}
     nombres = []
-    for nombre in autores_de(articulo):
+    for nombre in autores_de(articulo, (indices or {}).get("excepciones") or ()):
         pagina = paginas.get(clave_indice(nombre))
         rotulo = escapar_html(nombre)
         if pagina:
@@ -2160,16 +2175,44 @@ def sin_tildes(texto):
     return "".join(letra for letra in descompuesto if not unicodedata.combining(letra))
 
 
-def autores_de(articulo):
+def apartar(texto, excepciones):
+    """Cambia por una marca lo que no debe partirse. Devuelve (texto, guardados)."""
+    guardados = []
+    # de mayor a menor, por si una excepción contiene a otra
+    for excepcion in sorted(excepciones, key=len, reverse=True):
+        excepcion = " ".join(excepcion.split())
+        if not excepcion:
+            continue
+
+        def guardar(coincidencia):
+            guardados.append(coincidencia.group(0))
+            return MARCA % (len(guardados) - 1)
+
+        texto = re.sub(re.escape(excepcion), guardar, texto, flags=re.IGNORECASE)
+    return texto, guardados
+
+
+def devolver(trozo, guardados):
+    """Deshace lo que hizo apartar()."""
+    for orden, guardado in enumerate(guardados):
+        trozo = trozo.replace(MARCA % orden, guardado)
+    return trozo
+
+
+def autores_de(articulo, excepciones=()):
     """Los autores de un artículo, uno a uno.
 
     La revista los escribe seguidos, separados por comas y rematados con la
     conjunción ('Ana, Luis y Marta'), que en castellano se vuelve 'e' delante
-    de i- ('Ana e Ignacio').
+    de i- ('Ana e Ignacio'). Los nombres de la tabla de excepciones se apartan
+    antes de cortar, porque llevan dentro una coma o una conjunción.
     """
+    texto = " ".join(articulo.get("autor", "").split())
+    texto, guardados = apartar(texto, excepciones)
+
     nombres = []
-    for trozo in RE_AUTORES.split(articulo.get("autor", "")):
-        trozo = " ".join(trozo.split())
+    for trozo in RE_AUTORES.split(texto):
+        trozo = " ".join(devolver(trozo, guardados).split())
         if trozo:
             nombres.append(trozo)
     return nombres
@@ -2181,12 +2224,41 @@ def inicial(nombre):
     return letra if "A" <= letra <= "Z" else LETRA_RESTO
 
 
-def agrupar_autores(numeros):
+def preparar_excepciones(mapa, opciones):
+    """La tabla de nombres que no deben partirse: la del mapa, o la de fábrica.
+
+    Si el mapa no la trae, se le anota la de fábrica para poder retocarla a
+    mano; si la trae mal escrita, se avisa y se tira con la de fábrica.
+    """
+    tabla = mapa.get(CLAVE_EXCEPCIONES)
+    if tabla is None:
+        mapa[CLAVE_EXCEPCIONES] = list(EXCEPCIONES)
+        # --web no toca la sesión, así que la cookie se queda como estaba
+        opciones.cookie_activa = mapa.get("cookie")
+        rotulo = "se anotaría la" if opciones.simulacion else "anotada la"
+        informar(
+            opciones,
+            "  %s tabla de excepciones en %s"
+            % (rotulo, escribir_mapa(mapa, opciones)),
+        )
+        return mapa[CLAVE_EXCEPCIONES]
+
+    if not isinstance(tabla, list) or not all(isinstance(x, str) for x in tabla):
+        avisar(
+            "la clave «%s» de %s no es una lista de nombres; se usa la de fábrica"
+            % (CLAVE_EXCEPCIONES, ruta_mapa(opciones))
+        )
+        return list(EXCEPCIONES)
+
+    return tabla
+
+
+def agrupar_autores(numeros, excepciones=()):
     """Reúne los artículos de todo el archivo por autor."""
     grupos = {}
     for volumen, numero in numeros:
         for articulo in articulos_de(numero["articulos"]):
-            for nombre in autores_de(articulo):
+            for nombre in autores_de(articulo, excepciones):
                 grupo = grupos.setdefault(
                     clave_indice(nombre), {"grafias": Counter(), "apariciones": []}
                 )
@@ -2329,8 +2401,9 @@ def generar_web(opciones):
         for volumen in mapa["volumenes"]
         for numero in volumen["numeros"]
     ]
+    excepciones = preparar_excepciones(mapa, opciones)
     secciones = agrupar_secciones(numeros)
-    autores = agrupar_autores(numeros)
+    autores = agrupar_autores(numeros, excepciones)
     # dónde vive la página de cada sección y de cada autor, para enlazarlas
     indices = {
         "secciones": {
@@ -2339,6 +2412,7 @@ def generar_web(opciones):
         "autores": {
             clave_indice(autor["nombre"]): autor["pagina"] for autor in autores
         },
+        "excepciones": excepciones,
     }
 
     for posicion, (volumen, numero) in enumerate(numeros):
