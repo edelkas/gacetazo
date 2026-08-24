@@ -138,9 +138,9 @@ autores/index.html                <- índice de autores
 autores/María Gaspar.html         <- una página por autor
 ```
 
-Ambos ficheros se rehacen enteros cada vez, así que no conviene editarlos a
-mano. Hace falta tener mapeado el archivo completo; si falta algún número por
-mapear, se dice cuál y no se genera nada.
+El sitio se rehace entero cada vez, así que no conviene editarlo a mano. Hace
+falta tener mapeado el archivo completo; si falta algún número por mapear, se
+dice cuál y no se genera nada.
 
 La portada muestra una tabla con un volumen por fila —del más reciente al más
 antiguo— y sus números por columna, cada uno con su imagen de portada si ya
@@ -220,9 +220,10 @@ Aun así la separación no lo arregla todo: una coletilla (`Joan Cerdà, editor`
 sigue dando un autor de más, y el mismo autor firmado de dos maneras (María
 Gaspar y María Gaspar Alonso-Vega) sigue contando por dos.
 
-Al rehacer el sitio, las páginas de autores o secciones que ya no existan se
-quedan en su carpeta sin que nadie las enlace; conviene vaciar `autores/` y
-`secciones/` si el nombre de alguno cambia.
+Al rehacer el sitio se retiran las páginas de `autores/` y de `secciones/`
+que ya no correspondan a nadie, de modo que un cambio de nombre no deja
+páginas sueltas. Sólo se borran ficheros `.html` de esas dos carpetas: lo
+descargado no se toca.
 
 ## Material reservado a los socios
 

@@ -2361,6 +2361,37 @@ def escribir_web(nombre, contenido, opciones, callado=False):
         informar(opciones, "  %s" % ruta)
 
 
+def limpiar_sobras(carpetas, escritos, opciones):
+    """Retira los HTML que dejó una generación anterior y ya no se enlazan.
+
+    Sólo se miran las carpetas que son del sitio de arriba abajo, y dentro de
+    ellas sólo se borran ficheros .html: lo descargado no se toca. La
+    comparación no distingue mayúsculas, porque Windows conserva el nombre con
+    el que se creó el fichero aunque después se escriba de otra manera.
+    """
+    quedan = {nombre.lower() for nombre in escritos}
+    sobras = 0
+    for carpeta in carpetas:
+        raiz = os.path.join(opciones.destino, carpeta)
+        if not os.path.isdir(raiz):
+            continue
+        for nombre in sorted(os.listdir(raiz)):
+            camino = os.path.join(raiz, nombre)
+            if not nombre.lower().endswith(".html") or not os.path.isfile(camino):
+                continue
+            if ruta_relativa(camino, opciones).lower() in quedan:
+                continue
+            informar(
+                opciones,
+                "  %s %s"
+                % ("se retiraría" if opciones.simulacion else "retirado", camino),
+            )
+            if not opciones.simulacion:
+                os.remove(camino)
+            sobras += 1
+    return sobras
+
+
 def sin_mapear(mapa):
     """Números del mapa cuyo índice de artículos todavía no se ha descargado."""
     return [
@@ -2447,6 +2478,14 @@ def generar_web(opciones):
             callado=True,
         )
     informar(opciones, "  %d páginas de autor" % len(autores))
+
+    # lo que quedó de una generación anterior sobra: los nombres cambian
+    escritos = {RUTA_SECCIONES, RUTA_AUTORES}
+    escritos.update(seccion["pagina"] for seccion in secciones)
+    escritos.update(autor["pagina"] for autor in autores)
+    sobras = limpiar_sobras((CARPETA_SECCIONES, CARPETA_AUTORES), escritos, opciones)
+    if sobras:
+        informar(opciones, "  %d páginas obsoletas de más" % sobras)
 
     portadas = sum(
         1
