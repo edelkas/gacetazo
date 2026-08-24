@@ -5,7 +5,8 @@ Herramienta para archivar **La Gaceta de la RSME** (<https://gaceta.rsme.es>).
 La revista no publica sus números de forma uniforme: unos se ofrecen enteros en
 PDF y otros sólo artículo por artículo. `gaceta.py` recorre la web y vuelca en
 `sitemap.json` todo lo que encuentra (números, suplementos, secciones, artículos
-y sus metadatos), para después descargarlo y organizarlo por volumen y número.
+y sus metadatos), para después descargarlo, organizarlo por volumen y número y
+servirlo en una web local.
 
 ## Requisitos
 
@@ -28,6 +29,8 @@ python gaceta.py --descarga --vol 1 --num 1    # descarga un número
 python gaceta.py --descarga --vol 15 --num 1 --formato numero  # ídem, de una pieza
 python gaceta.py --descarga --vol 15 --num 1 --formato ambos   # ídem, las dos cosas
 python gaceta.py --descarga                    # descarga todo (pide confirmación)
+
+python gaceta.py --web                         # genera la web con lo descargado
 ```
 
 | Opción | Descripción |
@@ -44,6 +47,7 @@ python gaceta.py --descarga                    # descarga todo (pide confirmaci�
 | `-p CLAVE`, `--contraseña=CLAVE` | Su contraseña (no se guarda en ninguna parte); también `--contrasena` |
 | `-c VALOR`, `--cookie=VALOR` | Cookie `PHPSESSID` de una sesión ya abierta |
 | `-d DIR`, `--destino=DIR` | Carpeta raíz del archivo (por defecto, la actual) |
+| `-w`, `--web` | Rehace la web local a partir del mapa y de lo descargado |
 | `-n`, `--simulacion` | Informa de lo que haría, sin escribir nada |
 | `-q`, `--silencioso` | Oculta la información de progreso |
 
@@ -118,6 +122,41 @@ Los mensajes y avisos se imprimen siempre *por encima* de la barra, que se
 mantiene abajo del todo sin dejar copias sueltas por la pantalla. La barra se
 desactiva sola cuando la salida no es una consola (redirigida a un fichero o a
 otro programa) y con `--silencioso`.
+
+## Web local
+
+`--web` vuelca el archivo en un sitio estático que se abre con un doble clic,
+sin servidor de por medio:
+
+```
+index.html                        <- portada: la tabla de volúmenes
+estilo.css
+Vol 29 (2026)/1/index.html        <- una página por número
+```
+
+Ambos ficheros se rehacen enteros cada vez, así que no conviene editarlos a
+mano. Hace falta tener mapeado el archivo completo; si falta algún número por
+mapear, se dice cuál y no se genera nada.
+
+La portada muestra una tabla con un volumen por fila y sus números por
+columna, cada uno con su imagen de portada si ya está descargada (y su nombre
+si no), enlazada a la página del número. Encima, una barra de saltos a cada
+volumen.
+
+La página de cada número lleva su título (volumen, año, número y nombre, si lo
+tiene), una barra para recorrer el archivo de número en número (índice,
+primero, anterior, siguiente y último; los extremos salen apagados) y, a la
+derecha, la portada en grande con el enlace al ejemplar completo —el
+descargado, o el de la revista si no está— y al «Acerca de la portada».
+
+A la izquierda, el índice del número reproduce el árbol del mapa: un
+encabezado por sección y subsección, y cada artículo como una cita:
+
+> **Carta de la Presidenta**, *M. Victoria Otero Espinar*, págs. 5-8,
+> <https://www.doi.org/10.63427/ISDN5447>, RSME
+
+El título enlaza al PDF descargado (y va sin enlace si no está), el DOI al
+resolutor oficial y «RSME» al artículo en la web de la revista.
 
 ## Material reservado a los socios
 
@@ -231,3 +270,5 @@ sección. Hoy el archivo completo se analiza sin un solo aviso.
       artículos en total.
 - [x] Descarga y organización de portadas, artículos y números enteros.
 - [x] Acceso a los números reservados a los socios, mediante cookie de sesión.
+- [x] Web local: portada con la tabla de volúmenes y números.
+- [x] Web local: página de cada número, con sus secciones y artículos.

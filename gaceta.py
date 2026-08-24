@@ -9,13 +9,15 @@ subcarpeta por número, y un sitemap.json que describe todo lo encontrado.
 import hashlib
 import json
 import os
+import posixpath
 import re
 import shutil
 import sys
 import time
 from collections import deque
+from html import escape as escapar_html
 from optparse import IndentedHelpFormatter, OptionParser
-from urllib.parse import urljoin, urlparse, urlunparse
+from urllib.parse import quote, urljoin, urlparse, urlunparse
 
 import requests
 from bs4 import BeautifulSoup, Comment
@@ -25,6 +27,13 @@ SERVIDOR = urlparse(URL_BASE).hostname
 URL_INDICE = URL_BASE + "otrosnumeros.php"
 URL_ACCESO = URL_BASE + "control.php"
 NOMBRE_MAPA = "sitemap.json"
+
+# ficheros del sitio que se genera con --web
+NOMBRE_PAGINA = "index.html"
+NOMBRE_ESTILO = "estilo.css"
+
+# los DOI se enlazan a traves del resolutor oficial
+URL_DOI = "https://www.doi.org/"
 
 # el formulario de acceso de la portada manda a control.php estos tres campos,
 # y el servidor responde redirigiendo: a la dirección pedida si las
@@ -1486,6 +1495,453 @@ def descargar_todo(opciones):
     return 0
 
 
+# --------------------------------------------------------------------------
+# Sitio web
+#
+# Con --web se vuelca el mapa en un sitio estático que se abre con un doble
+# clic, sin servidor de por medio. Los enlaces apuntan a los ficheros ya
+# descargados, así que el sitio sólo tiene sentido junto al archivo local.
+# --------------------------------------------------------------------------
+
+ESTILO = """\
+/* Generado por gaceta.py; los cambios a mano se pierden al rehacer el sitio. */
+
+html { scroll-behavior: smooth; }
+
+body {
+    font-family: system-ui, "Segoe UI", Arial, sans-serif;
+    color: #222;
+    margin: 2rem auto;
+    max-width: 60rem;
+    padding: 0 1rem;
+}
+
+h1 { font-size: 1.6rem; margin-bottom: 1rem; }
+
+/* barra de saltos a cada volumen */
+.volumenes { margin-bottom: 1.5rem; line-height: 2; }
+.volumenes a {
+    border: 1px solid #ccd;
+    border-radius: 3px;
+    color: #036;
+    padding: 0.15rem 0.4rem;
+    text-decoration: none;
+}
+.volumenes a:hover { background: #eef; }
+
+table { border-collapse: collapse; }
+th, td { border: 1px solid #ddd; padding: 0.35rem; text-align: center; }
+tr { scroll-margin-top: 1rem; }
+th.volumen { font-weight: normal; text-align: left; white-space: nowrap; }
+td.vacia { border: none; }
+
+td a { color: #036; display: block; text-decoration: none; }
+td a:hover { text-decoration: underline; }
+
+/* todas las portadas del mismo tamaño, y pequeñas para que quepan
+   cuatro o cinco volúmenes en pantalla */
+td img { display: block; height: 118px; object-fit: cover; width: 84px; }
+
+/* --- página de un número ------------------------------------------- */
+
+.navegacion { line-height: 2; margin-bottom: 1.5rem; }
+.navegacion a, .navegacion span {
+    border: 1px solid #ccd;
+    border-radius: 3px;
+    color: #036;
+    padding: 0.15rem 0.5rem;
+    text-decoration: none;
+}
+.navegacion a:hover { background: #eef; }
+.navegacion span { border-color: #eee; color: #aaa; }  /* extremo del archivo */
+
+.numero { align-items: flex-start; display: flex; gap: 2rem; }
+.contenido { flex: 1 1 20rem; }
+.portada { flex: 0 0 13rem; text-align: center; }
+.portada img { border: 1px solid #ddd; height: auto; width: 100%; }
+.portada p { margin: 0.6rem 0 0; }
+
+h2 { border-bottom: 1px solid #ddd; font-size: 1.2rem; margin-top: 1.6rem; }
+h3 { font-size: 1.05rem; margin-top: 1.2rem; }
+h4 { font-size: 1rem; margin-top: 1rem; }
+
+/* cada artículo, como una cita con sangría francesa */
+.cita { line-height: 1.45; margin: 0.5rem 0 0.5rem 1.5rem; text-indent: -1.5rem; }
+.cita a { color: #036; }
+.cita .doi, .cita .rsme { font-size: 0.85em; }
+
+/* en pantalla estrecha la portada se va arriba y el índice debajo */
+@media (max-width: 45rem) {
+    .numero { flex-direction: column; }
+    .portada { align-self: center; order: -1; }
+}
+"""
+
+PLANTILLA_NUMERO = """<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>%(titulo)s - La Gaceta de la RSME</title>
+<link rel="stylesheet" href="%(estilo)s">
+</head>
+<body>
+<h1>%(titulo)s</h1>
+%(navegacion)s
+<div class="numero">
+<div class="contenido">
+%(articulos)s
+</div>
+%(portada)s
+</div>
+</body>
+</html>
+"""
+
+
+def rotulo_volumen(volumen):
+    """Cómo se nombra un volumen en el sitio: 'Vol. 01 (1998)'."""
+    return "Vol. %02d (%d)" % (volumen["num"], volumen["año"])
+
+
+def rotulo_numero(numero):
+    """Cómo se nombra un número: 'Núm. 3', o con su coletilla si es suplemento."""
+    rotulo = "Núm. %d" % numero["num"]
+    if es_suplemento(numero):
+        rotulo += " (Suplemento)"
+    return rotulo
+
+
+def ancla_volumen(volumen):
+    """Identificador con el que se salta a la fila de un volumen."""
+    return "vol-%02d" % volumen["num"]
+
+
+def ruta_pagina_numero(volumen, numero):
+    """Ruta de la página de un número, que vive en su propia carpeta."""
+    return "%s/%s/%s" % (
+        nombre_carpeta_volumen(volumen),
+        nombre_carpeta_numero(numero),
+        NOMBRE_PAGINA,
+    )
+
+
+def portada_descargada(volumen, numero, opciones):
+    """Ruta relativa de la portada guardada de un número, si está en el disco."""
+    ruta = fichero_existente(
+        ruta_carpeta_numero(volumen, numero, opciones), FICHERO_PORTADA
+    )
+    return ruta_relativa(ruta, opciones) if ruta else None
+
+
+def enlace_web(ruta):
+    """Codifica una ruta relativa para poder usarla como href o src."""
+    return quote(ruta)
+
+
+def celda_numero(volumen, numero, opciones):
+    """Celda de la tabla: la portada si la hay, y si no el nombre del número."""
+    rotulo = rotulo_numero(numero)
+    portada = portada_descargada(volumen, numero, opciones)
+    if portada:
+        contenido = '<img src="%s" alt="%s">' % (enlace_web(portada), escapar_html(rotulo))
+    else:
+        contenido = escapar_html(rotulo)
+    return '<td><a href="%s" title="%s">%s</a></td>' % (
+        enlace_web(ruta_pagina_numero(volumen, numero)),
+        escapar_html(rotulo),
+        contenido,
+    )
+
+
+def fila_volumen(volumen, columnas, opciones):
+    """Fila de la tabla: el rótulo del volumen y sus números, rellenada al ancho."""
+    celdas = [celda_numero(volumen, numero, opciones) for numero in volumen["numeros"]]
+    celdas += ['<td class="vacia"></td>'] * (columnas - len(celdas))
+    return '<tr id="%s"><th class="volumen" scope="row">%s</th>%s</tr>' % (
+        ancla_volumen(volumen),
+        escapar_html(rotulo_volumen(volumen)),
+        "".join(celdas),
+    )
+
+
+def barra_volumenes(volumenes):
+    """Enlaces internos que saltan a la fila de cada volumen."""
+    enlaces = [
+        '<a href="#%s" title="%s">%d</a>'
+        % (ancla_volumen(volumen), escapar_html(rotulo_volumen(volumen)), volumen["num"])
+        for volumen in volumenes
+    ]
+    return '<p class="volumenes">%s</p>' % "\n".join(enlaces)
+
+
+def pagina_indice(mapa, opciones):
+    """Arma el index.html con la tabla de volúmenes y números."""
+    volumenes = mapa["volumenes"]
+    # la tabla es rectangular: tantas columnas como números tenga el volumen
+    # más nutrido, contando los suplementos
+    columnas = max(len(volumen["numeros"]) for volumen in volumenes)
+    filas = [fila_volumen(volumen, columnas, opciones) for volumen in volumenes]
+    return """<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>La Gaceta de la RSME</title>
+<link rel="stylesheet" href="%s">
+</head>
+<body>
+<h1>La Gaceta de la RSME</h1>
+%s
+<table>
+%s
+</table>
+</body>
+</html>
+""" % (enlace_web(NOMBRE_ESTILO), barra_volumenes(volumenes), "\n".join(filas))
+
+
+def rotulo_paginas(entrada):
+    """Cómo se citan las páginas: 'pág. 5', o 'págs. 5-8' si son varias."""
+    inicio = entrada.get("pagina_inicio")
+    if inicio is None:
+        return None
+    fin = entrada.get("pagina_fin", inicio)
+    if fin == inicio:
+        return "pág. %d" % inicio
+    return "págs. %d-%d" % (inicio, fin)
+
+
+def fichero_local(entrada, opciones):
+    """Ruta del fichero descargado de una entrada, si sigue en el disco.
+
+    El mapa recuerda lo que se descargó, pero el fichero puede haberse
+    borrado después, y entonces no hay a dónde enlazar.
+    """
+    ficha = entrada.get("fichero")
+    if not ficha:
+        return None
+    ruta = os.path.join(opciones.destino, ficha["ruta"].replace("/", os.sep))
+    return ficha["ruta"] if os.path.isfile(ruta) else None
+
+
+def enlace_desde(ruta, carpeta):
+    """Enlace a una ruta del archivo desde la página que vive en esa carpeta."""
+    return enlace_web(posixpath.relpath(ruta, carpeta))
+
+
+def cita_articulo(articulo, carpeta, opciones):
+    """Un artículo, formateado como una cita bibliográfica."""
+    nombre = "<strong>%s</strong>" % escapar_html(articulo["nombre"])
+    local = fichero_local(articulo, opciones)
+    if local:
+        nombre = '<a href="%s">%s</a>' % (enlace_desde(local, carpeta), nombre)
+    partes = [nombre]
+
+    if "autor" in articulo:
+        partes.append("<em>%s</em>" % escapar_html(articulo["autor"]))
+    paginas = rotulo_paginas(articulo)
+    if paginas:
+        partes.append(paginas)
+    if "doi" in articulo:
+        url = escapar_html(URL_DOI + articulo["doi"])
+        partes.append('<a class="doi" href="%s">%s</a>' % (url, url))
+    if "link" in articulo:
+        partes.append(
+            '<a class="rsme" href="%s">RSME</a>' % escapar_html(articulo["link"])
+        )
+    return '<p class="cita">%s</p>' % ", ".join(partes)
+
+
+def arbol_web(entradas, carpeta, opciones, nivel=2, omitir=None):
+    """Vuelca el árbol de secciones y artículos, con un encabezado por nivel."""
+    trozos = []
+    for entrada in entradas:
+        if "articulos" in entrada:
+            etiqueta = "h%d" % min(nivel, 6)
+            trozos.append(
+                "<%s>%s</%s>" % (etiqueta, escapar_html(entrada["nombre"]), etiqueta)
+            )
+            trozos.extend(arbol_web(entrada["articulos"], carpeta, opciones, nivel + 1))
+        elif entrada is not omitir:
+            trozos.append(cita_articulo(entrada, carpeta, opciones))
+    return trozos
+
+
+def articulo_portada(numero):
+    """El prefacio 'Acerca de la portada', que se muestra junto a la imagen."""
+    for entrada in numero["articulos"]:
+        if "articulos" not in entrada and entrada["nombre"] == TITULO_PORTADA:
+            return entrada
+    return None
+
+
+def titulo_numero(volumen, numero):
+    """Cómo se encabeza un número, con su nombre detrás si lo tiene."""
+    titulo = "%s, %s" % (rotulo_volumen(volumen), rotulo_numero(numero))
+    if numero.get("nombre"):
+        titulo += ": %s" % numero["nombre"]
+    return titulo
+
+
+def boton_web(rotulo, destino=None):
+    """Botón de la barra de navegación; sin destino sale apagado."""
+    if destino is None:
+        return "<span>%s</span>" % escapar_html(rotulo)
+    return '<a href="%s">%s</a>' % (destino, escapar_html(rotulo))
+
+
+def navegacion_numero(numeros, posicion, carpeta):
+    """Botones para recorrer el archivo de número en número."""
+
+    def salto(indice):
+        if indice == posicion or not 0 <= indice < len(numeros):
+            return None
+        return enlace_desde(ruta_pagina_numero(*numeros[indice]), carpeta)
+
+    botones = [
+        boton_web("Índice", enlace_desde(NOMBRE_PAGINA, carpeta)),
+        boton_web("« Primero", salto(0)),
+        boton_web("‹ Anterior", salto(posicion - 1)),
+        boton_web("Siguiente ›", salto(posicion + 1)),
+        boton_web("Último »", salto(len(numeros) - 1)),
+    ]
+    return '<p class="navegacion">%s</p>' % "\n".join(botones)
+
+
+def columna_portada(volumen, numero, carpeta, opciones):
+    """La portada en grande y los enlaces que la acompañan."""
+    trozos = []
+    portada = portada_descargada(volumen, numero, opciones)
+    if portada:
+        trozos.append(
+            '<img src="%s" alt="Portada del %s">'
+            % (
+                enlace_desde(portada, carpeta),
+                escapar_html(titulo_numero(volumen, numero)),
+            )
+        )
+
+    # el ejemplar completo: el que haya en el disco, y si no el de la revista
+    entero = fichero_local(numero, opciones)
+    if entero:
+        trozos.append(
+            '<p><a href="%s">Número completo</a></p>' % enlace_desde(entero, carpeta)
+        )
+    elif numero.get("link_todo"):
+        trozos.append(
+            '<p><a href="%s">Número completo (RSME)</a></p>'
+            % escapar_html(numero["link_todo"])
+        )
+
+    prefacio = articulo_portada(numero)
+    if prefacio:
+        local = fichero_local(prefacio, opciones)
+        destino = enlace_desde(local, carpeta) if local else prefacio.get("link")
+        if destino:
+            trozos.append(
+                '<p><a href="%s">%s</a></p>' % (escapar_html(destino), TITULO_PORTADA)
+            )
+
+    return '<aside class="portada">\n%s\n</aside>' % "\n".join(trozos)
+
+
+def pagina_numero(numeros, posicion, opciones):
+    """Arma la página de un número: navegación, artículos y portada."""
+    volumen, numero = numeros[posicion]
+    carpeta = posixpath.dirname(ruta_pagina_numero(volumen, numero))
+    titulo = escapar_html(titulo_numero(volumen, numero))
+    articulos = arbol_web(
+        numero["articulos"], carpeta, opciones, omitir=articulo_portada(numero)
+    )
+    return PLANTILLA_NUMERO % {
+        "titulo": titulo,
+        "estilo": enlace_desde(NOMBRE_ESTILO, carpeta),
+        "navegacion": navegacion_numero(numeros, posicion, carpeta),
+        "articulos": "\n".join(articulos),
+        "portada": columna_portada(volumen, numero, carpeta, opciones),
+    }
+
+
+def escribir_web(nombre, contenido, opciones, callado=False):
+    """Escribe uno de los ficheros del sitio, dada su ruta desde la raíz."""
+    ruta = os.path.join(opciones.destino, nombre.replace("/", os.sep))
+    if opciones.simulacion:
+        if not callado:
+            informar(opciones, "  se escribiría %s" % ruta)
+        return
+    with open(ruta, "w", encoding="utf-8") as fichero:
+        fichero.write(contenido)
+    if not callado:
+        informar(opciones, "  %s" % ruta)
+
+
+def sin_mapear(mapa):
+    """Números del mapa cuyo índice de artículos todavía no se ha descargado."""
+    return [
+        (volumen, numero)
+        for volumen in mapa["volumenes"]
+        for numero in volumen["numeros"]
+        if "articulos" not in numero
+    ]
+
+
+def generar_web(opciones):
+    """Rehace el sitio a partir del mapa y de lo que haya en el disco."""
+    mapa = leer_mapa(opciones)
+    if mapa is None:
+        return error(
+            "no existe %s; ejecuta antes --mapa para crearlo" % ruta_mapa(opciones)
+        )
+
+    pendientes = sin_mapear(mapa)
+    if pendientes:
+        volumen, numero = pendientes[0]
+        cuantos = (
+            "falta un número por mapear"
+            if len(pendientes) == 1
+            else "faltan %d números por mapear" % len(pendientes)
+        )
+        return error(
+            "el sitio necesita el archivo entero mapeado, y %s (el primero, "
+            "%s, %s); ejecuta antes --mapa sobre ellos"
+            % (cuantos, rotulo_volumen(volumen), rotulo_numero(numero))
+        )
+
+    escribir_web(NOMBRE_PAGINA, pagina_indice(mapa, opciones), opciones)
+    escribir_web(NOMBRE_ESTILO, ESTILO, opciones)
+
+    numeros = [
+        (volumen, numero)
+        for volumen in mapa["volumenes"]
+        for numero in volumen["numeros"]
+    ]
+    for posicion, (volumen, numero) in enumerate(numeros):
+        # la carpeta falta si ese número no se llegó a descargar
+        asegurar_carpeta(ruta_carpeta_numero(volumen, numero, opciones), opciones)
+        escribir_web(
+            ruta_pagina_numero(volumen, numero),
+            pagina_numero(numeros, posicion, opciones),
+            opciones,
+            callado=True,
+        )
+    informar(opciones, "  %d páginas de número" % len(numeros))
+
+    portadas = sum(
+        1
+        for volumen, numero in numeros
+        if portada_descargada(volumen, numero, opciones)
+    )
+    informar(
+        opciones,
+        "Sitio generado: %d volúmenes, %d números, %d portadas."
+        % (len(mapa["volumenes"]), len(numeros), portadas),
+    )
+    if opciones.simulacion:
+        informar(opciones, "(simulación: no se ha escrito nada en el disco)")
+    return 0
+
+
 def principal(argumentos):
     # Los mensajes llevan acentos; en una consola con codificación limitada
     # se sustituyen los caracteres en vez de abortar con UnicodeEncodeError.
@@ -1536,6 +1992,11 @@ def principal(argumentos):
         help="qué bajar de cada número: «articulo» (los artículos sueltos, "
              "por defecto), «numero» (el ejemplar de una pieza, si se ofrece) "
              "o «ambos» (las dos cosas)",
+    )
+    analizador.add_option(
+        "-w", "--web",
+        action="store_true", default=False,
+        help="genera el sitio web que sirve el archivo ya descargado",
     )
     analizador.add_option(
         "-s", "--sup",
@@ -1609,13 +2070,21 @@ def principal(argumentos):
     else:
         opciones.formato = FORMATO_ARTICULO
 
-    if not opciones.mapa and not opciones.descarga:
+    if opciones.web:
+        if opciones.mapa or opciones.descarga:
+            analizador.error("--web se usa por su cuenta, sin --mapa ni --descarga")
+        if opciones.vol is not None:
+            analizador.error("--web rehace el sitio entero; no admite --vol ni --num")
+
+    if not opciones.mapa and not opciones.descarga and not opciones.web:
         if opciones.vol is not None:
             analizador.error("indica qué hacer con ese número: --mapa o --descarga")
         analizador.print_help()
         return 0
 
     try:
+        if opciones.web:
+            return generar_web(opciones)
         if opciones.descarga:
             if opciones.vol is None:
                 return descargar_todo(opciones)
