@@ -42,6 +42,15 @@ AUTOR_PORTADA = "Redacción de La Gaceta"
 FICHERO_PORTADA = "Portada"
 FICHERO_ENTERO = "Número completo"
 
+# formas en que puede bajarse un número: suelto por artículos, de una pieza,
+# o las dos cosas a la vez cuando la revista ofrece ambas
+FORMATO_ARTICULO = "articulo"
+FORMATO_NUMERO = "numero"
+FORMATO_AMBOS = "ambos"
+FORMATOS = (FORMATO_ARTICULO, FORMATO_NUMERO, FORMATO_AMBOS)
+# se admiten con tilde, que es como se escriben de verdad
+FORMATOS_ALIAS = {"artículo": FORMATO_ARTICULO, "número": FORMATO_NUMERO}
+
 # Windows prohíbe estos caracteres en un nombre de fichero, y también los
 # nombres heredados de los dispositivos del DOS
 RE_PROHIBIDOS = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
@@ -1282,11 +1291,21 @@ def contar_descargables(entradas):
     )
 
 
+def hay_entero(numero, opciones):
+    """¿Toca bajar el ejemplar de una pieza, y lo ofrece la revista?"""
+    return bool(
+        opciones.formato in (FORMATO_NUMERO, FORMATO_AMBOS)
+        and numero.get("link_todo")
+    )
+
+
 def ficheros_previstos(numero, opciones):
     """Cuántos ficheros se van a intentar bajar de un número."""
     previstos = 1 if numero.get("portada") else 0
-    if opciones.entero and numero.get("link_todo"):
-        return previstos + 1
+    if hay_entero(numero, opciones):
+        previstos += 1
+        if opciones.formato == FORMATO_NUMERO:
+            return previstos  # sólo la pieza entera, salvo que falle
     return previstos + contar_descargables(numero["articulos"])
 
 
@@ -1318,19 +1337,27 @@ def descargar_numero(volumen, numero, opciones, resumen, posicion=""):
     if numero.get("portada"):
         guardar(numero["portada"], carpeta, FICHERO_PORTADA, opciones, resumen)
 
-    if opciones.entero and numero.get("link_todo"):
-        estado = guardar(
-            numero["link_todo"], carpeta, FICHERO_ENTERO, opciones, resumen, numero
-        )
-        if estado in ("guardado", "existe"):
-            return 0
-        # reservado a socios o caído: los artículos sueltos suelen seguir ahí
-        informar(opciones, "  no se ha podido traer entero; se baja por partes")
-        BARRA.ampliar(contar_descargables(numero["articulos"]))
-    elif opciones.entero:
-        informar(opciones, "  no se ofrece entero; se baja por partes")
+    # con --formato=numero los artículos sueltos sólo se bajan si el ejemplar
+    # completo no está; con --formato=ambos se bajan siempre
+    partes = opciones.formato != FORMATO_NUMERO
 
-    descargar_articulos(numero["articulos"], carpeta, opciones, resumen, set())
+    if opciones.formato in (FORMATO_NUMERO, FORMATO_AMBOS):
+        if numero.get("link_todo"):
+            estado = guardar(
+                numero["link_todo"], carpeta, FICHERO_ENTERO, opciones, resumen, numero
+            )
+            if estado not in ("guardado", "existe") and not partes:
+                # reservado a socios o caído: los sueltos suelen seguir ahí
+                informar(opciones, "  no se ha podido traer entero; se baja por partes")
+                partes = True
+                BARRA.ampliar(contar_descargables(numero["articulos"]))
+        elif not partes:
+            informar(opciones, "  no se ofrece entero; se baja por partes")
+            partes = True
+            BARRA.ampliar(contar_descargables(numero["articulos"]))
+
+    if partes:
+        descargar_articulos(numero["articulos"], carpeta, opciones, resumen, set())
     return 0
 
 
@@ -1504,9 +1531,11 @@ def principal(argumentos):
         help="descarga el número indicado con --vol/--num, o todo el archivo",
     )
     analizador.add_option(
-        "-e", "--entero",
-        action="store_true", default=False,
-        help="baja el número completo de una pieza cuando la revista lo ofrezca",
+        "-f", "--formato",
+        metavar="MODO",
+        help="qué bajar de cada número: «articulo» (los artículos sueltos, "
+             "por defecto), «numero» (el ejemplar de una pieza, si se ofrece) "
+             "o «ambos» (las dos cosas)",
     )
     analizador.add_option(
         "-s", "--sup",
@@ -1566,8 +1595,19 @@ def principal(argumentos):
     if opciones.sup and opciones.vol is None:
         analizador.error("--sup necesita que se indiquen --vol y --num")
 
-    if opciones.entero and not opciones.descarga:
-        analizador.error("--entero sólo tiene sentido junto a --descarga")
+    if opciones.formato is not None:
+        if not opciones.descarga:
+            analizador.error("--formato sólo tiene sentido junto a --descarga")
+        elegido = opciones.formato.strip().lower()
+        elegido = FORMATOS_ALIAS.get(elegido, elegido)
+        if elegido not in FORMATOS:
+            analizador.error(
+                "formato desconocido: «%s»; elige entre %s"
+                % (opciones.formato, ", ".join("«%s»" % f for f in FORMATOS))
+            )
+        opciones.formato = elegido
+    else:
+        opciones.formato = FORMATO_ARTICULO
 
     if not opciones.mapa and not opciones.descarga:
         if opciones.vol is not None:

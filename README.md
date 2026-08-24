@@ -25,7 +25,8 @@ python gaceta.py --mapa --vol 29 --num 1       # indice de artículos de un núm
 python gaceta.py --mapa --vol 6 --num 2 --sup  # ídem, del suplemento de ese número
 
 python gaceta.py --descarga --vol 1 --num 1    # descarga un número
-python gaceta.py --descarga --vol 15 --num 1 --entero   # ídem, de una pieza
+python gaceta.py --descarga --vol 15 --num 1 --formato numero  # ídem, de una pieza
+python gaceta.py --descarga --vol 15 --num 1 --formato ambos   # ídem, las dos cosas
 python gaceta.py --descarga                    # descarga todo (pide confirmación)
 ```
 
@@ -35,7 +36,7 @@ python gaceta.py --descarga                    # descarga todo (pide confirmaci�
 | `--version` | Muestra la versión y termina |
 | `-m`, `--mapa` | Mapea el índice general, o el número indicado con `--vol`/`--num` |
 | `-D`, `--descarga` | Descarga ese número, o el archivo entero si no se acota |
-| `-e`, `--entero` | Baja el número de una pieza cuando la revista lo ofrezca |
+| `-f MODO`, `--formato=MODO` | Qué bajar de cada número: `articulo`, `numero` o `ambos` |
 | `-v N`, `--vol=N` | Volumen sobre el que actuar |
 | `-N N`, `--num=N` | Número dentro de ese volumen |
 | `-s`, `--sup` | Actúa sobre el suplemento de ese número |
@@ -67,16 +68,28 @@ Vol 06 (2003)/
 sitemap.json
 ```
 
+Cada número puede bajarse de tres formas, según `--formato`:
+
+| Valor | Qué se baja |
+| --- | --- |
+| `articulo` | Los artículos sueltos, uno a uno (por defecto) |
+| `numero` | El ejemplar completo de una pieza, si la revista lo ofrece |
+| `ambos` | Las dos cosas, cuando ambas están disponibles |
+
+Con `numero`, si el ejemplar completo no se ofrece o está reservado, se recurre
+a los artículos sueltos. Con `ambos` conviven en la misma carpeta el `Número
+completo` y los artículos, sin estorbarse.
+
 Cada fichero se guarda con el título de su artículo, saneado para Windows (se
 eliminan `<>:"/\|?*`, se recorta a 120 caracteres y se desambiguan los títulos
 repetidos con un sufijo `(2)`), y conserva la extensión que anuncia el
-servidor. La portada se llama siempre `Portada`, y con `--entero`, el ejemplar
-completo se guarda como `Número completo`.
+servidor. La portada se llama siempre `Portada`, y el ejemplar completo,
+`Número completo`.
 
 De cada artículo descargado se anota en su entrada del mapa una clave
 `fichero` con la ruta relativa a la raíz, el tamaño y el MD5 calculado al
-vuelo. Con `--entero`, esa clave se anota en el número en vez de en un
-artículo.
+vuelo. La del ejemplar completo se anota en el número en vez de en un
+artículo, así que con `--formato=ambos` se llevan las dos.
 
 ```jsonc
 "fichero": { "ruta": "Vol 06 (2003)/2 sup/Anexo 6....pdf",
@@ -111,8 +124,8 @@ otro programa) y con `--silencioso`.
 Los números más recientes están reservados a los socios de la RSME. Su página
 se consulta y se mapea con normalidad, pero el PDF redirige al formulario de
 acceso; esas descargas se cuentan aparte como *reservadas* y no se guarda nada
-en su lugar. Con `--entero`, si el ejemplar completo está reservado se
-recurre a los artículos sueltos, que a menudo sí están abiertos.
+en su lugar. Con `--formato=numero`, si el ejemplar completo está reservado
+se recurre a los artículos sueltos, que a menudo sí están abiertos.
 
 La forma cómoda de identificarse es con las credenciales de socio, que la
 herramienta usa para entrar por su cuenta:
