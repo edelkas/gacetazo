@@ -217,8 +217,54 @@ que el nombre aparezca dentro del campo `autor`, y da igual cómo se acentúen
 las mayúsculas.
 
 Aun así la separación no lo arregla todo: una coletilla (`Joan Cerdà, editor`)
-sigue dando un autor de más, y el mismo autor firmado de dos maneras (María
-Gaspar y María Gaspar Alonso-Vega) sigue contando por dos.
+sigue dando un autor de más.
+
+#### Firmas de una misma persona
+
+Casi nadie firma siempre igual, así que las firmas que son de la misma persona
+se reúnen bajo una sola. Se dan por suyas cuando:
+
+- sólo cambian las tildes, las mayúsculas o los guiones (*Andrei
+  Martínez-Finkelshtein* y *Andrei Martínez Finkelshtein*);
+- una deja apellidos por el camino (*Adolfo Quirós* de *Adolfo Quirós
+  Gracián*);
+- una lleva iniciales donde la otra lleva el nombre entero (*A.
+  Moreno-González* de *Auxiliadora Moreno-González*, o *M.ª Victoria* de
+  *María Victoria*);
+- una se calla un segundo nombre que en la otra va abreviado (*Ágata Timón
+  García-Longoria* de *Ágata A. Timón García-Longoria*). Sólo se admite que
+  lo callado sea una inicial: si fuese un nombre entero se emparejarían
+  apellidos, como *Manuel Domínguez* con *Manuel Perera Domínguez*.
+
+Sólo abrevia la firma corta: si es la larga la que lleva la inicial no se
+empareja nada, porque *Antonio Martínez* podría ser cualquier *Antonio M.* Y
+cuando una firma corta encaja en dos largas que no se parecen entre sí, se
+avisa por pantalla y se la deja aparte.
+
+De todas las firmas de un autor se muestra la más completa, y su página las
+enumera con las veces que aparece cada una:
+
+```
+Firmas: María Jesús Carro Rossell (4), María J. Carro (2), María J. Carro Rossell (1)
+```
+
+Lo que ninguna regla alcanza va en la clave `equivalencias` de
+`sitemap.json`, una lista con las firmas de cada persona:
+
+```jsonc
+"equivalencias": [
+  ["Marc Felipe Alsina", "Marc Felipe i Alsina"],
+  ["José Carrillo", "José Carrillo Yáñez"],
+  ["José Almira", "José María Almira"],
+  ["Marco Fontelos", "Marco Antonio Fontelos"]
+]
+```
+
+Se anota y se retoca igual que la de excepciones, manda sobre lo que se
+deduzca, y las firmas que no aparezcan en el archivo se ignoran. Sirve tanto
+para reunir lo que las reglas no ven como para desempatar una firma corta que
+encaja en dos personas distintas: *José Carrillo* podría ser *José Carrillo
+Yáñez* o *José A. Carrillo*, y sin la tabla se quedaría aparte.
 
 Al rehacer el sitio se retiran las páginas de `autores/` y de `secciones/`
 que ya no correspondan a nadie, de modo que un cambio de nombre no deja

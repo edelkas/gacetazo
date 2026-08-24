@@ -6,6 +6,7 @@ Construye un archivo local de la revista: una carpeta por volumen, una
 subcarpeta por número, y un sitemap.json que describe todo lo encontrado.
 """
 
+import copy
 import hashlib
 import json
 import os
@@ -49,6 +50,18 @@ EXCEPCIONES = [
     "José Echegaray y Eizaguirre",
     "Redacción de la sección de Problemas y Soluciones",
     "Sociedad de Estadística e Investigación Operativa",
+]
+
+# Firmas que son de la misma persona y que ninguna regla puede emparejar: un
+# apellido con la «i» catalana en medio, un segundo nombre que unas veces se
+# escribe entero y otras se calla. Cada lista son las firmas de uno. También
+# se copia a sitemap.json la primera vez.
+CLAVE_EQUIVALENCIAS = "equivalencias"
+EQUIVALENCIAS = [
+    ["Marc Felipe Alsina", "Marc Felipe i Alsina"],
+    ["José Carrillo", "José Carrillo Yáñez"],
+    ["José Almira", "José María Almira"],
+    ["Marco Fontelos", "Marco Antonio Fontelos"],
 ]
 
 # los DOI se enlazan a traves del resolutor oficial
@@ -145,6 +158,8 @@ RE_DOI = re.compile(r"DOI:\s*(\S+)")
 RE_AUTORES = re.compile(r"\s*,\s*|\s+[ye]\s+")
 # marca con la que se aparta un nombre para que no lo parta la separación
 MARCA = "\x00%d\x00"
+# la inicial de un nombre: «J», «J.», y la «M.ª» con que se abrevia María
+RE_ABREVIATURA = re.compile(r"^[^\W\d_]\.?[aoªº]?$", re.UNICODE)
 RE_PAGINAS_ARTICULO = re.compile(
     r"P[áa]gs?\.?\s*(\d+)\s*(?:[%s]\s*(\d+))?" % GUIONES
 )
@@ -951,7 +966,7 @@ def escribir_mapa(mapa, opciones):
 
     # lo corto va delante, que si no queda sepultado bajo los volúmenes
     contenido = {}
-    for clave in ("cookie", CLAVE_EXCEPCIONES):
+    for clave in ("cookie", CLAVE_EXCEPCIONES, CLAVE_EQUIVALENCIAS):
         if mapa.get(clave) is not None:
             contenido[clave] = mapa[clave]
     contenido.update(mapa)
@@ -1638,6 +1653,9 @@ h2 a:hover { text-decoration: underline; }
 }
 .letras a:hover { background: #eef; }
 .letras span { border-color: #eee; color: #ccc; }  /* letra sin autores */
+
+/* las maneras en que un autor ha firmado */
+.firmas { color: #555; font-size: 0.9rem; margin-bottom: 1.5rem; }
 """
 
 PLANTILLA_PAGINA = """<!DOCTYPE html>
@@ -1809,7 +1827,7 @@ def enlaces_autores(articulo, carpeta, indices):
     paginas = (indices or {}).get("autores") or {}
     nombres = []
     for nombre in autores_de(articulo, (indices or {}).get("excepciones") or ()):
-        pagina = paginas.get(clave_indice(nombre))
+        pagina = paginas.get(clave_firma(nombre))
         rotulo = escapar_html(nombre)
         if pagina:
             rotulo = '<a href="%s">%s</a>' % (enlace_desde(pagina, carpeta), rotulo)
@@ -2224,54 +2242,257 @@ def inicial(nombre):
     return letra if "A" <= letra <= "Z" else LETRA_RESTO
 
 
-def preparar_excepciones(mapa, opciones):
-    """La tabla de nombres que no deben partirse: la del mapa, o la de fábrica.
+def es_lista_de_textos(tabla):
+    """¿Es una lista de cadenas, que es lo que la tabla debe ser?"""
+    return isinstance(tabla, list) and all(isinstance(x, str) for x in tabla)
 
-    Si el mapa no la trae, se le anota la de fábrica para poder retocarla a
-    mano; si la trae mal escrita, se avisa y se tira con la de fábrica.
+
+def es_lista_de_grupos(tabla):
+    """¿Es una lista de listas de cadenas?"""
+    return isinstance(tabla, list) and all(es_lista_de_textos(x) for x in tabla)
+
+
+def tabla_del_mapa(mapa, opciones, clave, fabrica, tiene_forma):
+    """Una de las tablas que el usuario puede retocar en sitemap.json.
+
+    Devuelve la tabla y si ha habido que rellenarla con la de fábrica, que es
+    lo que obliga a reescribir el mapa.
     """
-    tabla = mapa.get(CLAVE_EXCEPCIONES)
+    tabla = mapa.get(clave)
     if tabla is None:
-        mapa[CLAVE_EXCEPCIONES] = list(EXCEPCIONES)
+        mapa[clave] = copy.deepcopy(fabrica)
+        return mapa[clave], True
+
+    if not tiene_forma(tabla):
+        avisar(
+            "la clave «%s» de %s no tiene la forma esperada; se usa la de fábrica"
+            % (clave, ruta_mapa(opciones))
+        )
+        return copy.deepcopy(fabrica), False
+
+    return tabla, False
+
+
+def preparar_tablas(mapa, opciones):
+    """Las tablas de excepciones y de equivalencias, del mapa o de fábrica.
+
+    Las que falten se le anotan al mapa, para poder retocarlas a mano.
+    """
+    excepciones, falta_una = tabla_del_mapa(
+        mapa, opciones, CLAVE_EXCEPCIONES, EXCEPCIONES, es_lista_de_textos
+    )
+    equivalencias, falta_otra = tabla_del_mapa(
+        mapa, opciones, CLAVE_EQUIVALENCIAS, EQUIVALENCIAS, es_lista_de_grupos
+    )
+
+    faltan = [
+        clave
+        for clave, falta in ((CLAVE_EXCEPCIONES, falta_una), (CLAVE_EQUIVALENCIAS, falta_otra))
+        if falta
+    ]
+    if faltan:
         # --web no toca la sesión, así que la cookie se queda como estaba
         opciones.cookie_activa = mapa.get("cookie")
-        rotulo = "se anotaría la" if opciones.simulacion else "anotada la"
+        rotulo = "se anotaría" if opciones.simulacion else "anotada"
         informar(
             opciones,
-            "  %s tabla de excepciones en %s"
-            % (rotulo, escribir_mapa(mapa, opciones)),
+            "  %s la tabla de %s en %s"
+            % (rotulo, " y la de ".join(faltan), escribir_mapa(mapa, opciones)),
         )
-        return mapa[CLAVE_EXCEPCIONES]
 
-    if not isinstance(tabla, list) or not all(isinstance(x, str) for x in tabla):
+    return excepciones, equivalencias
+
+
+def partes_nombre(nombre):
+    """Un nombre partido en piezas comparables, sin tildes ni guiones.
+
+    Se deshacen los guiones porque la misma persona firma unas veces
+    'Martínez-Finkelshtein' y otras 'Martínez Finkelshtein'.
+    """
+    llano = sin_tildes(nombre.replace("-", " ").replace("‐", " ")).lower()
+    return [pieza for pieza in llano.split() if pieza]
+
+
+def clave_firma(nombre):
+    """Firma normalizada, que es como se decide si dos son la misma."""
+    return " ".join(partes_nombre(nombre))
+
+
+def es_abreviatura(pieza):
+    """¿Es la inicial de un nombre? 'J', 'J.' y también la 'M.ª' de María."""
+    return bool(RE_ABREVIATURA.match(pieza))
+
+
+def abrevia(corta, larga):
+    """¿La primera es la segunda con menos apellidos, o con iniciales?
+
+    Vale que se dejen apellidos por el camino ('Adolfo Quirós' de 'Adolfo
+    Quirós Gracián') y que los nombres vayan con inicial ('A. Moreno-González'
+    de 'Auxiliadora Moreno-González'), pero sólo abrevia la corta: si es la
+    larga la que lleva la inicial, no hay manera de saber qué esconde.
+    """
+    piezas_corta, piezas_larga = corta.split(), larga.split()
+    if len(piezas_corta) > len(piezas_larga) or piezas_corta == piezas_larga:
+        return False
+    for pieza, otra in zip(piezas_corta, piezas_larga):
+        if pieza == otra:
+            continue
+        if es_abreviatura(pieza) and pieza[0] == otra[0]:
+            continue
+        return False
+    return True
+
+
+def calla_segundo_nombre(corta, larga):
+    """¿La primera es la segunda sin su segundo nombre? ('Ágata A. Timón').
+
+    Se exige que lo que se calla sea una inicial y que el resto case palabra
+    por palabra: admitir que fuese un nombre entero emparejaría apellidos
+    ('Manuel Domínguez' con 'Manuel Perera Domínguez').
+    """
+    piezas_corta, piezas_larga = corta.split(), larga.split()
+    if len(piezas_larga) != len(piezas_corta) + 1 or len(piezas_corta) < 2:
+        return False
+    if not es_abreviatura(piezas_larga[1]):
+        return False
+    return piezas_corta == piezas_larga[:1] + piezas_larga[2:]
+
+
+def es_reduccion(corta, larga):
+    """¿Es la primera una manera abreviada de firmar la segunda?"""
+    return abrevia(corta, larga) or calla_segundo_nombre(corta, larga)
+
+
+def se_parecen(claves):
+    """¿Son todas variantes unas de otras, o hay dos que no tienen que ver?"""
+    return all(
+        una == otra or es_reduccion(una, otra) or es_reduccion(otra, una)
+        for una in claves
+        for otra in claves
+    )
+
+
+def mismas_personas(claves, equivalencias=()):
+    """Decide qué firmas son de la misma persona; devuelve firma -> persona.
+
+    Cuando una firma corta encaja en dos largas que no se parecen entre sí,
+    no hay manera de saber de quién es y se la deja sola, salvo que la tabla
+    de equivalencias del mapa diga a quién pertenece.
+    """
+    claves = sorted(claves)
+    # la primera pieza siempre casa, así que basta comparar con quien la
+    # empiece por la misma letra
+    montones = {}
+    for clave in claves:
+        montones.setdefault(clave[:1], []).append(clave)
+
+    padre = {}
+
+    def raiz(clave):
+        while padre.get(clave, clave) != clave:
+            clave = padre[clave]
+        return clave
+
+    def unir(una, otra):
+        una, otra = raiz(una), raiz(otra)
+        if una != otra:
+            padre[una] = otra
+
+    dudosas = []
+    for clave in claves:
+        largas = [
+            otra
+            for otra in montones.get(clave[:1], ())
+            if otra != clave and es_reduccion(clave, otra)
+        ]
+        if len(largas) > 1 and not se_parecen(largas):
+            dudosas.append((clave, largas))
+            continue
+        for larga in largas:
+            unir(clave, larga)
+
+    # lo que diga el mapa va por encima de lo que se deduzca
+    conocidas = set(claves)
+    for iguales in equivalencias:
+        firmas = [clave_firma(firma) for firma in iguales]
+        firmas = [firma for firma in firmas if firma in conocidas]
+        for otra in firmas[1:]:
+            unir(firmas[0], otra)
+
+    for clave, largas in dudosas:
+        raices = {raiz(larga) for larga in largas}
+        if raiz(clave) in raices:
+            continue  # la tabla ya ha dicho de quién es esta firma
+        if len(raices) == 1:
+            unir(clave, largas[0])  # las candidatas resultaron ser la misma
+            continue
         avisar(
-            "la clave «%s» de %s no es una lista de nombres; se usa la de fábrica"
-            % (CLAVE_EXCEPCIONES, ruta_mapa(opciones))
+            "la firma «%s» encaja en varias que no se parecen (%s); se deja aparte"
+            % (clave, ", ".join("«%s»" % larga for larga in largas))
         )
-        return list(EXCEPCIONES)
 
-    return tabla
+    return {clave: raiz(clave) for clave in claves}
 
 
-def agrupar_autores(numeros, excepciones=()):
-    """Reúne los artículos de todo el archivo por autor."""
-    grupos = {}
+def nombre_canonico(firmas):
+    """De todas las firmas de un autor, la más completa y luego la más usada."""
+
+    def puntuar(nombre):
+        piezas = partes_nombre(nombre)
+        enteras = sum(0 if es_abreviatura(pieza) else 1 for pieza in piezas)
+        # a igualdad de todo, la grafía con más tildes: en castellano lo que
+        # se descuida es ponerlas, no inventárselas
+        tildes = sum(1 for letra in nombre if sin_tildes(letra) != letra)
+        return (enteras, firmas[nombre], tildes, len(nombre))
+
+    return max(firmas, key=puntuar)
+
+
+def linea_firmas(autor):
+    """Las distintas maneras en que este autor ha firmado, y cuántas veces."""
+    firmas = sorted(autor["firmas"].items(), key=lambda par: (-par[1], par[0]))
+    return '<p class="firmas">Firmas: %s</p>' % ", ".join(
+        "%s (%d)" % (escapar_html(nombre), veces) for nombre, veces in firmas
+    )
+
+
+def agrupar_autores(numeros, excepciones=(), equivalencias=()):
+    """Reúne los artículos de todo el archivo por autor.
+
+    Una misma persona firma de varias maneras, así que primero se decide qué
+    firmas son suyas y luego se junta lo que haya publicado con todas ellas.
+    """
+    apariciones = []
+    firmas = Counter()
     for volumen, numero in numeros:
         for articulo in articulos_de(numero["articulos"]):
-            for nombre in autores_de(articulo, excepciones):
-                grupo = grupos.setdefault(
-                    clave_indice(nombre), {"grafias": Counter(), "apariciones": []}
-                )
-                grupo["grafias"][nombre] += 1
-                grupo["apariciones"].append((volumen, numero, articulo))
+            nombres = autores_de(articulo, excepciones)
+            for nombre in nombres:
+                firmas[nombre] += 1
+            if nombres:
+                apariciones.append((volumen, numero, articulo, nombres))
+
+    de_quien = mismas_personas(
+        {clave_firma(nombre) for nombre in firmas}, equivalencias
+    )
+
+    grupos = {}
+    for volumen, numero, articulo, nombres in apariciones:
+        # dict.fromkeys quita repetidos sin descolocar el orden, por si el
+        # mismo autor apareciera dos veces firmando distinto
+        for clave in dict.fromkeys(de_quien[clave_firma(n)] for n in nombres):
+            grupo = grupos.setdefault(clave, {"firmas": Counter(), "apariciones": []})
+            grupo["apariciones"].append((volumen, numero, articulo))
+    for nombre, veces in firmas.items():
+        grupos[de_quien[clave_firma(nombre)]]["firmas"][nombre] += veces
 
     autores = []
     for grupo in grupos.values():
         años = [volumen["año"] for volumen, _, _ in grupo["apariciones"]]
         autores.append(
             {
-                # de las grafías vistas se queda la más repetida
-                "nombre": grupo["grafias"].most_common(1)[0][0],
+                "nombre": nombre_canonico(grupo["firmas"]),
+                "firmas": grupo["firmas"],
                 "apariciones": grupo["apariciones"],
                 "articulos": len(grupo["apariciones"]),
                 "desde": min(años),
@@ -2342,7 +2563,7 @@ def pagina_autor(autores, posicion, opciones, indices=None):
         boton_web("Siguiente ›", salto(posicion + 1)),
         boton_web("Último »", salto(len(autores) - 1)),
     ]
-    trozos = [barra_navegacion(botones)]
+    trozos = [barra_navegacion(botones), linea_firmas(autor)]
     for _, _, articulo in reversed(autor["apariciones"]):
         trozos.append(cita_articulo(articulo, carpeta, opciones, indices))
     return envolver_pagina(autor["nombre"], "\n".join(trozos), carpeta)
@@ -2432,16 +2653,19 @@ def generar_web(opciones):
         for volumen in mapa["volumenes"]
         for numero in volumen["numeros"]
     ]
-    excepciones = preparar_excepciones(mapa, opciones)
+    excepciones, equivalencias = preparar_tablas(mapa, opciones)
     secciones = agrupar_secciones(numeros)
-    autores = agrupar_autores(numeros, excepciones)
+    autores = agrupar_autores(numeros, excepciones, equivalencias)
     # dónde vive la página de cada sección y de cada autor, para enlazarlas
     indices = {
         "secciones": {
             clave_indice(seccion["nombre"]): seccion["pagina"] for seccion in secciones
         },
+        # se busca por cualquiera de sus firmas, no sólo por la elegida
         "autores": {
-            clave_indice(autor["nombre"]): autor["pagina"] for autor in autores
+            clave_firma(firma): autor["pagina"]
+            for autor in autores
+            for firma in autor["firmas"]
         },
         "excepciones": excepciones,
     }
