@@ -132,16 +132,20 @@ sin servidor de por medio:
 index.html                        <- portada: la tabla de volúmenes
 estilo.css
 Vol 29 (2026)/1/index.html        <- una página por número
+secciones/index.html              <- índice de secciones
+secciones/Editorial.html          <- una página por sección
+autores/index.html                <- índice de autores
+autores/María Gaspar.html         <- una página por autor
 ```
 
 Ambos ficheros se rehacen enteros cada vez, así que no conviene editarlos a
 mano. Hace falta tener mapeado el archivo completo; si falta algún número por
 mapear, se dice cuál y no se genera nada.
 
-La portada muestra una tabla con un volumen por fila y sus números por
-columna, cada uno con su imagen de portada si ya está descargada (y su nombre
-si no), enlazada a la página del número. Encima, una barra de saltos a cada
-volumen.
+La portada muestra una tabla con un volumen por fila —del más reciente al más
+antiguo— y sus números por columna, cada uno con su imagen de portada si ya
+está descargada (y su nombre si no), enlazada a la página del número. Encima,
+una barra de saltos a cada volumen, esta en orden natural.
 
 La página de cada número lleva su título (volumen, año, número y nombre, si lo
 tiene), una barra para recorrer el archivo de número en número (índice,
@@ -150,13 +154,53 @@ derecha, la portada en grande con el enlace al ejemplar completo —el
 descargado, o el de la revista si no está— y al «Acerca de la portada».
 
 A la izquierda, el índice del número reproduce el árbol del mapa: un
-encabezado por sección y subsección, y cada artículo como una cita:
+encabezado por sección y subsección —las de primer nivel enlazan a su página
+del índice de secciones—, y cada artículo como una cita:
 
 > **Carta de la Presidenta**, *M. Victoria Otero Espinar*, págs. 5-8,
 > <https://www.doi.org/10.63427/ISDN5447>, RSME
 
 El título enlaza al PDF descargado (y va sin enlace si no está), el DOI al
 resolutor oficial y «RSME» al artículo en la web de la revista.
+
+### Índice de secciones
+
+La mayoría de las secciones se repiten número tras número, así que el archivo
+puede recorrerse también por ellas. Los artículos se agrupan por su sección de
+primer nivel —los «Acerca de la portada», que van sueltos en la raíz de cada
+número, forman una sección aparte—, y se listan de la más nutrida a la menos:
+
+```
+Artículos (339 artículos, 1998-2026)
+Noticias de la Sociedad (241 artículos, 2008-2026)
+...
+```
+
+Al agrupar se igualan espacios y mayúsculas, para que una sección no se parta
+en dos por un cambio de grafía.
+
+La página de cada sección recorre sus artículos del número más reciente al más
+antiguo, con un encabezado por número (enlazado a su página) y una barra para
+saltar directamente a cualquiera de ellos. Las citas tienen la misma forma que
+en las páginas de número.
+
+### Índice de autores
+
+Los autores se sacan del campo `autor` de cada artículo, que la revista escribe
+seguido: se parte por las comas y por la conjunción (`y`, o `e` ante palabra
+que empieza por i-), y se normaliza igual que las secciones. En las citas cada
+nombre enlaza a su página.
+
+El índice va por orden alfabético, con un encabezado por letra y una barra de
+la A a la Z (las letras que nadie estrena salen apagadas). Cada autor se
+resume como en las secciones, y su página lista sus artículos del más reciente
+al más antiguo.
+
+La separación es mecánica, así que no acierta siempre: un apellido con `y`
+dentro (José Echegaray y Eizaguirre), una institución con `e` (Sociedad de
+Estadística e Investigación Operativa) o una coletilla (`Joan Cerdà, editor`)
+se parten en dos. Tampoco reúne al mismo autor firmado de dos maneras
+distintas (María Gaspar y María Gaspar Alonso-Vega).
 
 ## Material reservado a los socios
 
@@ -272,3 +316,5 @@ sección. Hoy el archivo completo se analiza sin un solo aviso.
 - [x] Acceso a los números reservados a los socios, mediante cookie de sesión.
 - [x] Web local: portada con la tabla de volúmenes y números.
 - [x] Web local: página de cada número, con sus secciones y artículos.
+- [x] Web local: índice de secciones, con una página por sección.
+- [x] Web local: índice de autores, con una página por autor.

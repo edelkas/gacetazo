@@ -14,7 +14,8 @@ import re
 import shutil
 import sys
 import time
-from collections import deque
+import unicodedata
+from collections import Counter, deque
 from html import escape as escapar_html
 from optparse import IndentedHelpFormatter, OptionParser
 from urllib.parse import quote, urljoin, urlparse, urlunparse
@@ -31,6 +32,12 @@ NOMBRE_MAPA = "sitemap.json"
 # ficheros del sitio que se genera con --web
 NOMBRE_PAGINA = "index.html"
 NOMBRE_ESTILO = "estilo.css"
+CARPETA_SECCIONES = "secciones"
+RUTA_SECCIONES = CARPETA_SECCIONES + "/" + NOMBRE_PAGINA
+CARPETA_AUTORES = "autores"
+RUTA_AUTORES = CARPETA_AUTORES + "/" + NOMBRE_PAGINA
+# los nombres que no empiezan por letra del abecedario se archivan juntos
+LETRA_RESTO = "#"
 
 # los DOI se enlazan a traves del resolutor oficial
 URL_DOI = "https://www.doi.org/"
@@ -121,6 +128,9 @@ RE_ENTERO = re.compile(r"abrirentero\.php\?id=(\d+)")
 RE_DOI = re.compile(r"DOI:\s*(\S+)")
 # "Pág. 103-116" o "Pág. 42"; aquí hay que anclar en "Pág" porque el título
 # de un artículo puede contener un rango, como "6 años de La Gaceta (1998-2003)"
+# la revista lista los autores separados por comas y con la conjunción al
+# final, que ante palabra que empieza por i- se escribe "e"
+RE_AUTORES = re.compile(r"\s*,\s*|\s+[ye]\s+")
 RE_PAGINAS_ARTICULO = re.compile(
     r"P[áa]gs?\.?\s*(\d+)\s*(?:[%s]\s*(\d+))?" % GUIONES
 )
@@ -1575,9 +1585,47 @@ h4 { font-size: 1rem; margin-top: 1rem; }
     .numero { flex-direction: column; }
     .portada { align-self: center; order: -1; }
 }
+
+/* --- índice de secciones y páginas de sección ----------------------- */
+
+.linea { margin: 0.4rem 0; }
+.linea a { color: #036; font-weight: 600; text-decoration: none; }
+.linea a:hover { text-decoration: underline; }
+
+/* saltos a cada número con presencia en la sección */
+.numeros { font-size: 0.9rem; line-height: 2; margin-bottom: 1.5rem; }
+.numeros a {
+    border: 1px solid #ccd;
+    border-radius: 3px;
+    color: #036;
+    padding: 0.1rem 0.35rem;
+    text-decoration: none;
+}
+.numeros a:hover { background: #eef; }
+
+h2[id] { scroll-margin-top: 1rem; }
+h2 a { color: inherit; text-decoration: none; }
+h2 a:hover { text-decoration: underline; }
+
+/* --- índice de autores ---------------------------------------------- */
+
+/* saltos a cada letra del abecedario */
+.letras { line-height: 2; margin-bottom: 1.5rem; }
+.letras a, .letras span {
+    border: 1px solid #ccd;
+    border-radius: 3px;
+    color: #036;
+    display: inline-block;
+    min-width: 1.2rem;
+    padding: 0.1rem 0.3rem;
+    text-align: center;
+    text-decoration: none;
+}
+.letras a:hover { background: #eef; }
+.letras span { border-color: #eee; color: #ccc; }  /* letra sin autores */
 """
 
-PLANTILLA_NUMERO = """<!DOCTYPE html>
+PLANTILLA_PAGINA = """<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="utf-8">
@@ -1587,13 +1635,7 @@ PLANTILLA_NUMERO = """<!DOCTYPE html>
 </head>
 <body>
 <h1>%(titulo)s</h1>
-%(navegacion)s
-<div class="numero">
-<div class="contenido">
-%(articulos)s
-</div>
-%(portada)s
-</div>
+%(cuerpo)s
 </body>
 </html>
 """
@@ -1681,7 +1723,11 @@ def pagina_indice(mapa, opciones):
     # la tabla es rectangular: tantas columnas como números tenga el volumen
     # más nutrido, contando los suplementos
     columnas = max(len(volumen["numeros"]) for volumen in volumenes)
-    filas = [fila_volumen(volumen, columnas, opciones) for volumen in volumenes]
+    # la tabla empieza por lo más reciente; la barra de saltos, en cambio, se
+    # deja en orden natural, que es como se busca un volumen concreto
+    filas = [
+        fila_volumen(volumen, columnas, opciones) for volumen in reversed(volumenes)
+    ]
     return """<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -1693,12 +1739,18 @@ def pagina_indice(mapa, opciones):
 <body>
 <h1>La Gaceta de la RSME</h1>
 %s
+%s
 <table>
 %s
 </table>
 </body>
 </html>
-""" % (enlace_web(NOMBRE_ESTILO), barra_volumenes(volumenes), "\n".join(filas))
+""" % (
+        enlace_web(NOMBRE_ESTILO),
+        barra_navegacion(botones_indices("", salvo=NOMBRE_PAGINA)),
+        barra_volumenes(volumenes),
+        "\n".join(filas),
+    )
 
 
 def rotulo_paginas(entrada):
@@ -1730,7 +1782,27 @@ def enlace_desde(ruta, carpeta):
     return enlace_web(posixpath.relpath(ruta, carpeta))
 
 
-def cita_articulo(articulo, carpeta, opciones):
+def enumerar(trozos):
+    """Une los trozos como se enumera en castellano: 'a, b y c'."""
+    if len(trozos) < 2:
+        return "".join(trozos)
+    return "%s y %s" % (", ".join(trozos[:-1]), trozos[-1])
+
+
+def enlaces_autores(articulo, carpeta, indices):
+    """Los autores del artículo, cada uno enlazado a su página."""
+    paginas = (indices or {}).get("autores") or {}
+    nombres = []
+    for nombre in autores_de(articulo):
+        pagina = paginas.get(clave_indice(nombre))
+        rotulo = escapar_html(nombre)
+        if pagina:
+            rotulo = '<a href="%s">%s</a>' % (enlace_desde(pagina, carpeta), rotulo)
+        nombres.append(rotulo)
+    return enumerar(nombres) if nombres else escapar_html(articulo["autor"])
+
+
+def cita_articulo(articulo, carpeta, opciones, indices=None):
     """Un artículo, formateado como una cita bibliográfica."""
     nombre = "<strong>%s</strong>" % escapar_html(articulo["nombre"])
     local = fichero_local(articulo, opciones)
@@ -1739,7 +1811,7 @@ def cita_articulo(articulo, carpeta, opciones):
     partes = [nombre]
 
     if "autor" in articulo:
-        partes.append("<em>%s</em>" % escapar_html(articulo["autor"]))
+        partes.append("<em>%s</em>" % enlaces_autores(articulo, carpeta, indices))
     paginas = rotulo_paginas(articulo)
     if paginas:
         partes.append(paginas)
@@ -1753,18 +1825,33 @@ def cita_articulo(articulo, carpeta, opciones):
     return '<p class="cita">%s</p>' % ", ".join(partes)
 
 
-def arbol_web(entradas, carpeta, opciones, nivel=2, omitir=None):
-    """Vuelca el árbol de secciones y artículos, con un encabezado por nivel."""
+def arbol_web(entradas, carpeta, opciones, nivel=2, omitir=None, indices=None):
+    """Vuelca el árbol de secciones y artículos, con un encabezado por nivel.
+
+    Las secciones de primer nivel se enlazan a su página del índice de
+    secciones; las de dentro no, porque ese índice no baja de ahí.
+    """
     trozos = []
     for entrada in entradas:
         if "articulos" in entrada:
             etiqueta = "h%d" % min(nivel, 6)
-            trozos.append(
-                "<%s>%s</%s>" % (etiqueta, escapar_html(entrada["nombre"]), etiqueta)
+            rotulo = escapar_html(entrada["nombre"])
+            # sólo las secciones de primer nivel tienen página propia
+            pagina = None
+            if nivel == 2:
+                pagina = ((indices or {}).get("secciones") or {}).get(
+                    clave_indice(entrada["nombre"])
+                )
+            if pagina:
+                rotulo = '<a href="%s">%s</a>' % (enlace_desde(pagina, carpeta), rotulo)
+            trozos.append("<%s>%s</%s>" % (etiqueta, rotulo, etiqueta))
+            trozos.extend(
+                arbol_web(
+                    entrada["articulos"], carpeta, opciones, nivel + 1, indices=indices
+                )
             )
-            trozos.extend(arbol_web(entrada["articulos"], carpeta, opciones, nivel + 1))
         elif entrada is not omitir:
-            trozos.append(cita_articulo(entrada, carpeta, opciones))
+            trozos.append(cita_articulo(entrada, carpeta, opciones, indices))
     return trozos
 
 
@@ -1784,6 +1871,34 @@ def titulo_numero(volumen, numero):
     return titulo
 
 
+def envolver_pagina(titulo, cuerpo, carpeta):
+    """Viste un cuerpo de página con la cabecera y el título comunes."""
+    return PLANTILLA_PAGINA % {
+        "titulo": escapar_html(titulo),
+        "estilo": enlace_desde(NOMBRE_ESTILO, carpeta),
+        "cuerpo": cuerpo,
+    }
+
+
+def barra_navegacion(botones):
+    """Envuelve una tanda de botones en su barra."""
+    return '<p class="navegacion">%s</p>' % "\n".join(botones)
+
+
+def botones_indices(carpeta, salvo=None):
+    """Botones a los tres índices; se calla el de la página en la que se está."""
+    indices = [
+        ("Números", NOMBRE_PAGINA),
+        ("Secciones", RUTA_SECCIONES),
+        ("Autores", RUTA_AUTORES),
+    ]
+    return [
+        boton_web(rotulo, enlace_desde(destino, carpeta))
+        for rotulo, destino in indices
+        if destino != salvo
+    ]
+
+
 def boton_web(rotulo, destino=None):
     """Botón de la barra de navegación; sin destino sale apagado."""
     if destino is None:
@@ -1799,14 +1914,13 @@ def navegacion_numero(numeros, posicion, carpeta):
             return None
         return enlace_desde(ruta_pagina_numero(*numeros[indice]), carpeta)
 
-    botones = [
-        boton_web("Índice", enlace_desde(NOMBRE_PAGINA, carpeta)),
+    botones = botones_indices(carpeta) + [
         boton_web("« Primero", salto(0)),
         boton_web("‹ Anterior", salto(posicion - 1)),
         boton_web("Siguiente ›", salto(posicion + 1)),
         boton_web("Último »", salto(len(numeros) - 1)),
     ]
-    return '<p class="navegacion">%s</p>' % "\n".join(botones)
+    return barra_navegacion(botones)
 
 
 def columna_portada(volumen, numero, carpeta, opciones):
@@ -1846,21 +1960,320 @@ def columna_portada(volumen, numero, carpeta, opciones):
     return '<aside class="portada">\n%s\n</aside>' % "\n".join(trozos)
 
 
-def pagina_numero(numeros, posicion, opciones):
+def pagina_numero(numeros, posicion, opciones, indices=None):
     """Arma la página de un número: navegación, artículos y portada."""
     volumen, numero = numeros[posicion]
     carpeta = posixpath.dirname(ruta_pagina_numero(volumen, numero))
-    titulo = escapar_html(titulo_numero(volumen, numero))
     articulos = arbol_web(
-        numero["articulos"], carpeta, opciones, omitir=articulo_portada(numero)
+        numero["articulos"],
+        carpeta,
+        opciones,
+        omitir=articulo_portada(numero),
+        indices=indices,
     )
-    return PLANTILLA_NUMERO % {
-        "titulo": titulo,
-        "estilo": enlace_desde(NOMBRE_ESTILO, carpeta),
-        "navegacion": navegacion_numero(numeros, posicion, carpeta),
-        "articulos": "\n".join(articulos),
-        "portada": columna_portada(volumen, numero, carpeta, opciones),
-    }
+    cuerpo = """%s
+<div class="numero">
+<div class="contenido">
+%s
+</div>
+%s
+</div>""" % (
+        navegacion_numero(numeros, posicion, carpeta),
+        "\n".join(articulos),
+        columna_portada(volumen, numero, carpeta, opciones),
+    )
+    return envolver_pagina(titulo_numero(volumen, numero), cuerpo, carpeta)
+
+
+def clave_indice(nombre):
+    """Nombre de sección normalizado, para no partir en dos lo que es una.
+
+    Basta con igualar los espacios y las mayúsculas: así 'Educación' y
+    'EDUCACIÓN ' cuentan como la misma sección.
+    """
+    return " ".join(nombre.split()).lower()
+
+
+def articulos_de(entradas):
+    """Todos los artículos que cuelgan de una sección, a cualquier hondura."""
+    hojas = []
+    for entrada in entradas:
+        if "articulos" in entrada:
+            hojas.extend(articulos_de(entrada["articulos"]))
+        else:
+            hojas.append(entrada)
+    return hojas
+
+
+def tandas_del_numero(numero):
+    """Las secciones de primer nivel de un número, con sus artículos.
+
+    El prefacio de la portada vive suelto en la raíz, así que se le da una
+    sección propia; cualquier otro suelto se queda fuera de este índice.
+    """
+    for entrada in numero["articulos"]:
+        if "articulos" in entrada:
+            yield entrada["nombre"], articulos_de(entrada["articulos"])
+        elif entrada["nombre"] == TITULO_PORTADA:
+            yield TITULO_PORTADA, [entrada]
+
+
+def fichero_indice(nombre, usados):
+    """Nombre de fichero libre para la página de una sección."""
+    base = sanear_nombre(nombre) or "seccion"
+    candidato, orden = base, 2
+    while (candidato + ".html").lower() in usados:
+        candidato, orden = "%s (%d)" % (base, orden), orden + 1
+    usados.add((candidato + ".html").lower())
+    return candidato + ".html"
+
+
+def agrupar_secciones(numeros):
+    """Reúne los artículos de todo el archivo por su sección de primer nivel."""
+    grupos = {}
+    for volumen, numero in numeros:
+        for nombre, articulos in tandas_del_numero(numero):
+            if not articulos:
+                continue
+            grupo = grupos.setdefault(
+                clave_indice(nombre), {"grafias": Counter(), "tandas": []}
+            )
+            grupo["grafias"][nombre] += 1
+            grupo["tandas"].append((volumen, numero, articulos))
+
+    secciones = []
+    for grupo in grupos.values():
+        años = [volumen["año"] for volumen, _, _ in grupo["tandas"]]
+        secciones.append(
+            {
+                # de las grafías vistas se queda la más repetida
+                "nombre": grupo["grafias"].most_common(1)[0][0],
+                "tandas": grupo["tandas"],
+                "articulos": sum(len(hojas) for _, _, hojas in grupo["tandas"]),
+                "desde": min(años),
+                "hasta": max(años),
+            }
+        )
+
+    secciones.sort(key=lambda seccion: (-seccion["articulos"], clave_indice(seccion["nombre"])))
+    usados = {NOMBRE_PAGINA.lower()}
+    for seccion in secciones:
+        seccion["pagina"] = "%s/%s" % (
+            CARPETA_SECCIONES,
+            fichero_indice(seccion["nombre"], usados),
+        )
+    return secciones
+
+
+def rotulo_años(entrada):
+    """'1998-2026', o un solo año si la entrada no pasó de ahí."""
+    if entrada["desde"] == entrada["hasta"]:
+        return "%d" % entrada["desde"]
+    return "%d-%d" % (entrada["desde"], entrada["hasta"])
+
+
+def linea_indice(entrada, carpeta):
+    """Una entrada de índice: el nombre enlazado y de qué se compone."""
+    cuantos = (
+        "1 artículo"
+        if entrada["articulos"] == 1
+        else "%d artículos" % entrada["articulos"]
+    )
+    return '<p class="linea"><a href="%s">%s</a> (%s, %s)</p>' % (
+        enlace_desde(entrada["pagina"], carpeta),
+        escapar_html(entrada["nombre"]),
+        cuantos,
+        rotulo_años(entrada),
+    )
+
+
+def pagina_secciones(secciones, opciones):
+    """El índice de secciones, de la más nutrida a la menos."""
+    carpeta = posixpath.dirname(RUTA_SECCIONES)
+    lineas = [linea_indice(seccion, carpeta) for seccion in secciones]
+    cuerpo = "\n".join(
+        [barra_navegacion(botones_indices(carpeta, salvo=RUTA_SECCIONES))] + lineas
+    )
+    return envolver_pagina("Secciones", cuerpo, carpeta)
+
+
+def ancla_tanda(volumen, numero):
+    """Identificador con el que se salta al bloque de un número."""
+    return "n-%02d-%s" % (volumen["num"], nombre_carpeta_numero(numero).replace(" ", "-"))
+
+
+def barra_tandas(tandas, carpeta):
+    """Saltos al bloque de cada número con presencia en la sección."""
+    enlaces = [
+        '<a href="#%s" title="%s">%d.%s</a>'
+        % (
+            ancla_tanda(volumen, numero),
+            escapar_html(titulo_numero(volumen, numero)),
+            volumen["num"],
+            nombre_carpeta_numero(numero),
+        )
+        for volumen, numero, _ in tandas
+    ]
+    return '<p class="numeros">%s</p>' % "\n".join(enlaces)
+
+
+def pagina_seccion(secciones, posicion, opciones, indices=None):
+    """La página de una sección: sus artículos, del número más nuevo al más viejo."""
+    seccion = secciones[posicion]
+    carpeta = posixpath.dirname(seccion["pagina"])
+
+    def salto(indice):
+        if not 0 <= indice < len(secciones):
+            return None
+        return enlace_desde(secciones[indice]["pagina"], carpeta)
+
+    navegacion = barra_navegacion(
+        botones_indices(carpeta)
+        + [
+            boton_web("‹ Anterior", salto(posicion - 1)),
+            boton_web("Siguiente ›", salto(posicion + 1)),
+        ]
+    )
+
+    tandas = list(reversed(seccion["tandas"]))
+    trozos = [navegacion, barra_tandas(tandas, carpeta)]
+    for volumen, numero, articulos in tandas:
+        trozos.append(
+            '<h2 id="%s"><a href="%s">%s</a></h2>'
+            % (
+                ancla_tanda(volumen, numero),
+                enlace_desde(ruta_pagina_numero(volumen, numero), carpeta),
+                escapar_html(titulo_numero(volumen, numero)),
+            )
+        )
+        trozos.extend(
+            cita_articulo(articulo, carpeta, opciones, indices)
+            for articulo in articulos
+        )
+
+    return envolver_pagina(seccion["nombre"], "\n".join(trozos), carpeta)
+
+
+def sin_tildes(texto):
+    """Quita las tildes, para ordenar y agrupar como en un listín."""
+    descompuesto = unicodedata.normalize("NFD", texto)
+    return "".join(letra for letra in descompuesto if not unicodedata.combining(letra))
+
+
+def autores_de(articulo):
+    """Los autores de un artículo, uno a uno.
+
+    La revista los escribe seguidos, separados por comas y rematados con la
+    conjunción ('Ana, Luis y Marta'), que en castellano se vuelve 'e' delante
+    de i- ('Ana e Ignacio').
+    """
+    nombres = []
+    for trozo in RE_AUTORES.split(articulo.get("autor", "")):
+        trozo = " ".join(trozo.split())
+        if trozo:
+            nombres.append(trozo)
+    return nombres
+
+
+def inicial(nombre):
+    """Letra bajo la que se archiva un nombre; lo demás va junto al final."""
+    letra = sin_tildes(nombre[:1]).upper()
+    return letra if "A" <= letra <= "Z" else LETRA_RESTO
+
+
+def agrupar_autores(numeros):
+    """Reúne los artículos de todo el archivo por autor."""
+    grupos = {}
+    for volumen, numero in numeros:
+        for articulo in articulos_de(numero["articulos"]):
+            for nombre in autores_de(articulo):
+                grupo = grupos.setdefault(
+                    clave_indice(nombre), {"grafias": Counter(), "apariciones": []}
+                )
+                grupo["grafias"][nombre] += 1
+                grupo["apariciones"].append((volumen, numero, articulo))
+
+    autores = []
+    for grupo in grupos.values():
+        años = [volumen["año"] for volumen, _, _ in grupo["apariciones"]]
+        autores.append(
+            {
+                # de las grafías vistas se queda la más repetida
+                "nombre": grupo["grafias"].most_common(1)[0][0],
+                "apariciones": grupo["apariciones"],
+                "articulos": len(grupo["apariciones"]),
+                "desde": min(años),
+                "hasta": max(años),
+            }
+        )
+
+    autores.sort(key=lambda autor: sin_tildes(clave_indice(autor["nombre"])))
+    usados = {NOMBRE_PAGINA.lower()}
+    for autor in autores:
+        autor["pagina"] = "%s/%s" % (
+            CARPETA_AUTORES,
+            fichero_indice(autor["nombre"], usados),
+        )
+    return autores
+
+
+def barra_letras(autores, carpeta):
+    """Saltos a cada letra del abecedario; las que nadie estrena van apagadas."""
+    presentes = {inicial(autor["nombre"]) for autor in autores}
+    letras = [chr(codigo) for codigo in range(ord("A"), ord("Z") + 1)]
+    if LETRA_RESTO in presentes:
+        letras.append(LETRA_RESTO)
+    saltos = [
+        '<a href="#%s">%s</a>' % (ancla_letra(letra), letra)
+        if letra in presentes
+        else "<span>%s</span>" % letra
+        for letra in letras
+    ]
+    return '<p class="letras">%s</p>' % "\n".join(saltos)
+
+
+def ancla_letra(letra):
+    """Identificador con el que se salta al bloque de una letra."""
+    return "letra-%s" % (letra if letra != LETRA_RESTO else "resto")
+
+
+def pagina_autores(autores, opciones):
+    """El índice de autores, por orden alfabético y agrupado por letras."""
+    carpeta = posixpath.dirname(RUTA_AUTORES)
+    trozos = [
+        barra_navegacion(botones_indices(carpeta, salvo=RUTA_AUTORES)),
+        barra_letras(autores, carpeta),
+    ]
+    letra_abierta = None
+    for autor in autores:
+        letra = inicial(autor["nombre"])
+        if letra != letra_abierta:
+            trozos.append('<h2 id="%s">%s</h2>' % (ancla_letra(letra), letra))
+            letra_abierta = letra
+        trozos.append(linea_indice(autor, carpeta))
+    return envolver_pagina("Autores", "\n".join(trozos), carpeta)
+
+
+def pagina_autor(autores, posicion, opciones, indices=None):
+    """La página de un autor: sus artículos, del más reciente al más antiguo."""
+    autor = autores[posicion]
+    carpeta = posixpath.dirname(autor["pagina"])
+
+    def salto(indice):
+        if indice == posicion or not 0 <= indice < len(autores):
+            return None
+        return enlace_desde(autores[indice]["pagina"], carpeta)
+
+    botones = botones_indices(carpeta) + [
+        boton_web("« Primero", salto(0)),
+        boton_web("‹ Anterior", salto(posicion - 1)),
+        boton_web("Siguiente ›", salto(posicion + 1)),
+        boton_web("Último »", salto(len(autores) - 1)),
+    ]
+    trozos = [barra_navegacion(botones)]
+    for _, _, articulo in reversed(autor["apariciones"]):
+        trozos.append(cita_articulo(articulo, carpeta, opciones, indices))
+    return envolver_pagina(autor["nombre"], "\n".join(trozos), carpeta)
 
 
 def escribir_web(nombre, contenido, opciones, callado=False):
@@ -1916,16 +2329,50 @@ def generar_web(opciones):
         for volumen in mapa["volumenes"]
         for numero in volumen["numeros"]
     ]
+    secciones = agrupar_secciones(numeros)
+    autores = agrupar_autores(numeros)
+    # dónde vive la página de cada sección y de cada autor, para enlazarlas
+    indices = {
+        "secciones": {
+            clave_indice(seccion["nombre"]): seccion["pagina"] for seccion in secciones
+        },
+        "autores": {
+            clave_indice(autor["nombre"]): autor["pagina"] for autor in autores
+        },
+    }
+
     for posicion, (volumen, numero) in enumerate(numeros):
         # la carpeta falta si ese número no se llegó a descargar
         asegurar_carpeta(ruta_carpeta_numero(volumen, numero, opciones), opciones)
         escribir_web(
             ruta_pagina_numero(volumen, numero),
-            pagina_numero(numeros, posicion, opciones),
+            pagina_numero(numeros, posicion, opciones, indices),
             opciones,
             callado=True,
         )
     informar(opciones, "  %d páginas de número" % len(numeros))
+
+    asegurar_carpeta(os.path.join(opciones.destino, CARPETA_SECCIONES), opciones)
+    escribir_web(RUTA_SECCIONES, pagina_secciones(secciones, opciones), opciones)
+    for posicion, seccion in enumerate(secciones):
+        escribir_web(
+            seccion["pagina"],
+            pagina_seccion(secciones, posicion, opciones, indices),
+            opciones,
+            callado=True,
+        )
+    informar(opciones, "  %d páginas de sección" % len(secciones))
+
+    asegurar_carpeta(os.path.join(opciones.destino, CARPETA_AUTORES), opciones)
+    escribir_web(RUTA_AUTORES, pagina_autores(autores, opciones), opciones)
+    for posicion, autor in enumerate(autores):
+        escribir_web(
+            autor["pagina"],
+            pagina_autor(autores, posicion, opciones, indices),
+            opciones,
+            callado=True,
+        )
+    informar(opciones, "  %d páginas de autor" % len(autores))
 
     portadas = sum(
         1
@@ -1934,8 +2381,15 @@ def generar_web(opciones):
     )
     informar(
         opciones,
-        "Sitio generado: %d volúmenes, %d números, %d portadas."
-        % (len(mapa["volumenes"]), len(numeros), portadas),
+        "Sitio generado: %d volúmenes, %d números, %d secciones, %d autores, "
+        "%d portadas."
+        % (
+            len(mapa["volumenes"]),
+            len(numeros),
+            len(secciones),
+            len(autores),
+            portadas,
+        ),
     )
     if opciones.simulacion:
         informar(opciones, "(simulación: no se ha escrito nada en el disco)")
