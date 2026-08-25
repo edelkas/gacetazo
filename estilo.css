@@ -1,0 +1,129 @@
+/* Generado por gaceta.py; los cambios a mano se pierden al rehacer el sitio. */
+
+html { scroll-behavior: smooth; }
+
+body {
+    font-family: system-ui, "Segoe UI", Arial, sans-serif;
+    color: #222;
+    margin: 2rem auto;
+    max-width: 60rem;
+    padding: 0 1rem;
+}
+
+h1 { font-size: 1.6rem; margin-bottom: 1rem; }
+
+/* barra de saltos a cada volumen */
+.volumenes { margin-bottom: 1.5rem; line-height: 2; }
+.volumenes a {
+    border: 1px solid #ccd;
+    border-radius: 3px;
+    color: #036;
+    padding: 0.15rem 0.4rem;
+    text-decoration: none;
+}
+.volumenes a:hover { background: #eef; }
+
+table { border-collapse: collapse; }
+th, td { border: 1px solid #ddd; padding: 0.35rem; text-align: center; }
+tr { scroll-margin-top: 1rem; }
+th.volumen { font-weight: normal; text-align: left; white-space: nowrap; }
+td.vacia { border: none; }
+
+td a { color: #036; display: block; text-decoration: none; }
+td a:hover { text-decoration: underline; }
+
+/* todas las portadas del mismo tamaño, y pequeñas para que quepan
+   cuatro o cinco volúmenes en pantalla */
+td img { display: block; height: 118px; object-fit: cover; width: 84px; }
+
+/* --- página de un número ------------------------------------------- */
+
+.navegacion { line-height: 2.2; margin-bottom: 1.5rem; }
+.navegacion a, .navegacion span {
+    border: 1px solid #ccd;
+    border-radius: 3px;
+    color: #036;
+    padding: 0.15rem 0.5rem;
+    text-decoration: none;
+}
+.navegacion a:hover { background: #eef; }
+.navegacion span { border-color: #eee; color: #aaa; }  /* extremo del archivo */
+
+.numero { align-items: flex-start; display: flex; gap: 2rem; }
+.contenido { flex: 1 1 20rem; }
+.portada { flex: 0 0 13rem; text-align: center; }
+.portada img { border: 1px solid #ddd; height: auto; width: 100%; }
+.portada p { margin: 0.6rem 0 0; }
+
+h2 { border-bottom: 1px solid #ddd; font-size: 1.2rem; margin-top: 1.6rem; }
+h3 { font-size: 1.05rem; margin-top: 1.2rem; }
+h4 { font-size: 1rem; margin-top: 1rem; }
+
+/* cada artículo, como una cita con sangría francesa */
+.cita { line-height: 1.45; margin: 0.5rem 0 0.5rem 1.5rem; text-indent: -1.5rem; }
+.cita a { color: #036; }
+.cita .doi, .cita .rsme { font-size: 0.85em; }
+
+/* en pantalla estrecha la portada se va arriba y el índice debajo */
+@media (max-width: 45rem) {
+    .numero { flex-direction: column; }
+    .portada { align-self: center; order: -1; }
+}
+
+/* --- índice de secciones y páginas de sección ----------------------- */
+
+.linea { margin: 0.4rem 0; }
+.linea a { color: #036; font-weight: 600; text-decoration: none; }
+.linea a:hover { text-decoration: underline; }
+
+/* saltos a cada número con presencia en la sección */
+.numeros { font-size: 0.9rem; line-height: 2; margin-bottom: 1.5rem; }
+.numeros a {
+    border: 1px solid #ccd;
+    border-radius: 3px;
+    color: #036;
+    padding: 0.1rem 0.35rem;
+    text-decoration: none;
+}
+.numeros a:hover { background: #eef; }
+
+h2[id] { scroll-margin-top: 1rem; }
+h1 a, h2 a, h3 a { color: inherit; text-decoration: none; }
+h1 a:hover, h2 a:hover, h3 a:hover { text-decoration: underline; }
+
+/* --- índice de autores ---------------------------------------------- */
+
+/* saltos a cada letra del abecedario */
+.letras { line-height: 2; margin-bottom: 1.5rem; }
+.letras a, .letras span {
+    border: 1px solid #ccd;
+    border-radius: 3px;
+    color: #036;
+    display: inline-block;
+    min-width: 1.2rem;
+    padding: 0.1rem 0.3rem;
+    text-align: center;
+    text-decoration: none;
+}
+.letras a:hover { background: #eef; }
+.letras span { border-color: #eee; color: #ccc; }  /* letra sin autores */
+
+/* --- buscador -------------------------------------------------------- */
+
+/* el formulario, que va al final de la barra de navegación */
+.buscar { display: inline-block; margin-left: 0.4rem; white-space: nowrap; }
+.buscar input, .buscar button {
+    border: 1px solid #ccd;
+    border-radius: 3px;
+    font: inherit;
+    padding: 0.15rem 0.4rem;
+}
+.buscar input { width: 12rem; }
+.buscar button { background: #fff; color: #036; cursor: pointer; }
+.buscar button:hover { background: #eef; }
+
+/* cuántos artículos han salido */
+.cuenta { color: #555; margin-bottom: 1.5rem; }
+
+/* las maneras en que un autor ha firmado */
+.firmas { color: #555; font-size: 0.9rem; margin-bottom: 1.5rem; }
