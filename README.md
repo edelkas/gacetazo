@@ -31,7 +31,7 @@ python gaceta.py --descarga --vol 15 --num 1 --formato ambos   # ídem, las dos 
 python gaceta.py --descarga                    # descarga todo (pide confirmación)
 
 python gaceta.py --web                         # genera la web con lo descargado
-python gaceta.py --web --externa                # ídem, enlazando los PDF a la RSME
+python gaceta.py --web --externa               # ídem, enlazando los PDF a la RSME
 ```
 
 | Opción | Descripción |
@@ -60,17 +60,20 @@ El mapeo de un número exige que `sitemap.json` exista ya. Volver a ejecutar
 ## Descarga
 
 Las carpetas se crean al descargar, y sólo las de aquello que se descarga; el
-mapeo no toca el disco más allá de `sitemap.json`. Descargar un número que aún
-no esté mapeado lo mapea antes automáticamente.
+mapeo no toca el disco más allá de `sitemap.json`. Todas cuelgan de `numeros/`;
+si vienes de una versión anterior, que las dejaba en la raíz, muévelas ahí y el
+programa corregirá solo las rutas que tuviera anotadas. Descargar un número que
+aún no esté mapeado lo mapea antes automáticamente.
 
 ```
-Vol 06 (2003)/
-  2/                      <- número 2
-    Portada.jpg
-    Acerca de la portada.pdf
-    6 años de La Gaceta (1998-2003).pdf
-    ...
-  2 sup/                  <- suplemento del número 2
+numeros/
+  Vol 06 (2003)/
+    2/                    <- número 2
+      Portada.jpg
+      Acerca de la portada.pdf
+      6 años de La Gaceta (1998-2003).pdf
+      ...
+    2 sup/                <- suplemento del número 2
 sitemap.json
 ```
 
@@ -98,7 +101,7 @@ vuelo. La del ejemplar completo se anota en el número en vez de en un
 artículo, así que con `--formato=ambos` se llevan las dos.
 
 ```jsonc
-"fichero": { "ruta": "Vol 06 (2003)/2 sup/Anexo 6....pdf",
+"fichero": { "ruta": "numeros/Vol 06 (2003)/2 sup/Anexo 6....pdf",
              "tamaño": 86489, "md5": "cdafbcd00e3aaf648a083d30f00457ce" }
 ```
 
@@ -133,7 +136,8 @@ sin servidor de por medio:
 ```
 index.html                        <- portada: la tabla de volúmenes
 estilo.css
-Vol 29 (2026)/1/index.html        <- una página por número
+buscar.html                       <- resultados de la búsqueda
+numeros/Vol 29 (2026)/1/          <- una carpeta por número, con su index.html
 secciones/index.html              <- índice de secciones
 secciones/Editorial.html          <- una página por sección
 autores/index.html                <- índice de autores
@@ -150,10 +154,11 @@ está descargada (y su nombre si no), enlazada a la página del número. Encima,
 una barra de saltos a cada volumen, esta en orden natural.
 
 La página de cada número lleva su título (volumen, año, número y nombre, si lo
-tiene), que enlaza a la página que la revista le dedica; una barra para recorrer el archivo de número en número (índice,
-primero, anterior, siguiente y último; los extremos salen apagados) y, a la
-derecha, la portada en grande con el enlace al ejemplar completo —el
-descargado, o el de la revista si no está— y al «Acerca de la portada».
+tiene), que enlaza a la página que la revista le dedica; una barra para
+recorrer el archivo de número en número (índice, primero, anterior, siguiente y
+último; los extremos salen apagados) y, a la derecha, la portada en grande con
+el enlace al ejemplar completo —el descargado, o el de la revista si no está— y
+al «Acerca de la portada».
 
 A la izquierda, el índice del número reproduce el árbol del mapa: un
 encabezado por sección y subsección —las de primer nivel enlazan a su página
@@ -204,7 +209,7 @@ Hay nombres que llevan dentro una coma o una conjunción y que la separación
 partiría donde no debe: un apellido con `y` (José Echegaray y Eizaguirre), una
 institución con `e` (Sociedad de Estadística e Investigación Operativa). Esos
 se apartan enteros antes de cortar, según la tabla de la clave `excepciones`
-de `sitemap.json`:
+de `config.json`:
 
 ```jsonc
 "excepciones": [
@@ -253,7 +258,7 @@ Firmas: María Jesús Carro Rossell (4), María J. Carro (2), María J. Carro Ro
 ```
 
 Lo que ninguna regla alcanza va en la clave `equivalencias` de
-`sitemap.json`, una lista con las firmas de cada persona:
+`config.json`, una lista con las firmas de cada persona:
 
 ```jsonc
 "equivalencias": [
@@ -270,6 +275,30 @@ para reunir lo que las reglas no ven como para desempatar una firma corta que
 encaja en dos personas distintas: *José Carrillo* podría ser *José Carrillo
 Yáñez* o *José A. Carrillo*, y sin la tabla se quedaría aparte.
 
+### Búsqueda
+
+Todas las páginas llevan un buscador en la barra de navegación, que busca por
+título y lleva a `buscar.html` con lo pedido en la dirección
+(`buscar.html?q=gauss`). Los resultados salen del más reciente al más antiguo,
+agrupados por número y por sección y formateados como en el resto del sitio.
+Se buscan coincidencias sueltas, sin distinguir mayúsculas ni tildes: *«gauss»*
+encuentra *«Gauss y la regla de signos de Descartes»*.
+
+El sitio es estático, así que el trabajo lo hace el navegador con dos ficheros
+más en la raíz:
+
+```
+buscar.html                       <- la página de resultados, vacía
+busqueda.js                       <- el índice: un título por artículo y su cita
+buscador.js                       <- las cien líneas que buscan y pintan
+```
+
+El índice va como guion y no como JSON porque el sitio también se abre con un
+doble clic, y desde `file://` el navegador no deja leer un fichero suelto pero
+sí cargar un guion. Ocupa cerca de un mega, que el servidor manda comprimido, y
+sólo lo carga `buscar.html`. Con eso el sitio se basta a sí mismo: no necesita
+el `sitemap.json` ni ningún servidor que sepa nada del archivo.
+
 ### Web para publicar
 
 Con `--externa`, el sitio no enlaza ni un solo PDF del disco: el título de cada
@@ -278,6 +307,11 @@ artículo lleva a su `abrir.php` de la revista (y entonces sobra el remate
 el «Acerca de la portada» a su PDF. Las imágenes de portada siguen siendo
 locales, que son ligeras. Así puede publicarse el archivo sin repartir los PDF,
 que además en parte están reservados a los socios.
+
+Eso es justo lo que deja pasar el `.gitignore`: fuera los PDF, el
+`config.json` y el `sitemap.json`; dentro las páginas, las portadas, el estilo
+y los dos guiones del buscador. Un `git add .` sobre el sitio recién generado
+deja el repositorio listo para GitHub Pages.
 
 Al rehacer el sitio se retiran las páginas de `autores/` y de `secciones/`
 que ya no correspondan a nadie, de modo que un cambio de nombre no deja
@@ -315,11 +349,11 @@ Se admite una cadena hexadecimal de entre 22 y 256 caracteres (la revista usa
 32) y se rechaza cualquier otra cosa. Si se dan las dos formas a la vez,
 `--cookie` manda y no se llega a acceder con las credenciales.
 
-En cualquiera de los dos casos la cookie queda anotada en `sitemap.json` y las
+En cualquiera de los dos casos la cookie queda anotada en `config.json` y las
 siguientes ejecuciones la reutilizan sin necesidad de repetir nada. Si la
-revista deja de reconocerla, se avisa por pantalla, se borra del mapa y la
-descarga continúa como visitante. Conviene recordar que esa cookie es una
-sesión viva: no compartas el `sitemap.json` sin quitarla antes.
+revista deja de reconocerla, se avisa por pantalla, se borra de los ajustes y
+la descarga continúa como visitante. Conviene recordar que esa cookie es una
+sesión viva: no compartas el `config.json` con nadie.
 
 ### Todo va cifrado
 
@@ -338,6 +372,19 @@ herramienta se ocupa de que eso no pase nunca:
 
 El certificado se valida siempre (hoy la revista sirve TLS 1.3 con
 certificado de Let's Encrypt).
+
+## Los dos ficheros
+
+Lo que se guarda va en dos sitios, según de quién sea:
+
+| Fichero | Qué lleva |
+| --- | --- |
+| `sitemap.json` | El mapa del archivo: volúmenes, números, artículos y qué se ha descargado. Es de trabajo: la web no lo lee, porque el buscador lleva su propio índice |
+| `config.json` | Lo personal: la cookie de sesión y las tablas de `excepciones` y `equivalencias`. **No lo compartas**: la cookie es una sesión de socio viva |
+
+Las versiones anteriores lo guardaban todo junto en `sitemap.json`. Al leer un
+mapa de aquéllos, el programa se lleva las tres claves personales a
+`config.json` y lo dice por pantalla; no hay que hacer nada a mano.
 
 ## Formato de `sitemap.json`
 
@@ -401,3 +448,4 @@ sección. Hoy el archivo completo se analiza sin un solo aviso.
 - [x] Web local: índice de secciones, con una página por sección.
 - [x] Web local: índice de autores, con una página por autor.
 - [x] Web local: versión con enlaces externos, para publicar sin los PDF.
+- [x] Web local: búsqueda de artículos por título, en el navegador.

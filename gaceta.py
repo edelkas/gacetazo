@@ -29,10 +29,19 @@ SERVIDOR = urlparse(URL_BASE).hostname
 URL_INDICE = URL_BASE + "otrosnumeros.php"
 URL_ACCESO = URL_BASE + "control.php"
 NOMBRE_MAPA = "sitemap.json"
+# lo personal se aparta del mapa: éste describe el archivo y puede publicarse,
+# aquello es de cada cual y no debe salir de su ordenador
+NOMBRE_CONFIG = "config.json"
 
 # ficheros del sitio que se genera con --web
 NOMBRE_PAGINA = "index.html"
 NOMBRE_ESTILO = "estilo.css"
+NOMBRE_BUSQUEDA = "buscar.html"
+NOMBRE_INDICE = "busqueda.js"
+NOMBRE_BUSCADOR = "buscador.js"
+# el nombre con que el formulario manda lo que se busca, y que lee buscador.js
+PARAMETRO_BUSQUEDA = "q"
+CARPETA_NUMEROS = "numeros"
 CARPETA_SECCIONES = "secciones"
 RUTA_SECCIONES = CARPETA_SECCIONES + "/" + NOMBRE_PAGINA
 CARPETA_AUTORES = "autores"
@@ -43,7 +52,7 @@ LETRA_RESTO = "#"
 # Nombres que la separación por comas y conjunciones partiría donde no
 # debe: un apellido con «y» dentro, una institución con «e», una sección
 # cuyo nombre lleva «y». Se apartan enteros antes de cortar. La tabla se
-# copia a sitemap.json la primera vez, y de ahí se puede retocar.
+# copia a config.json la primera vez, y de ahí se puede retocar.
 CLAVE_EXCEPCIONES = "excepciones"
 EXCEPCIONES = [
     "Comisión de Educación, Cultura y Deporte del Senado",
@@ -55,7 +64,7 @@ EXCEPCIONES = [
 # Firmas que son de la misma persona y que ninguna regla puede emparejar: un
 # apellido con la «i» catalana en medio, un segundo nombre que unas veces se
 # escribe entero y otras se calla. Cada lista son las firmas de uno. También
-# se copia a sitemap.json la primera vez.
+# se copia a config.json la primera vez.
 CLAVE_EQUIVALENCIAS = "equivalencias"
 EQUIVALENCIAS = [
     ["Marc Felipe Alsina", "Marc Felipe i Alsina"],
@@ -63,6 +72,9 @@ EQUIVALENCIAS = [
     ["José Almira", "José María Almira"],
     ["Marco Fontelos", "Marco Antonio Fontelos"],
 ]
+
+# lo que vive en config.json, y que las versiones anteriores guardaban en el mapa
+CLAVES_CONFIG = ("cookie", CLAVE_EXCEPCIONES, CLAVE_EQUIVALENCIAS)
 
 # los DOI se enlazan a traves del resolutor oficial
 URL_DOI = "https://www.doi.org/"
@@ -889,6 +901,7 @@ def ruta_carpeta_numero(volumen, numero, opciones):
     """Ruta de la carpeta de un número dentro del destino."""
     return os.path.join(
         opciones.destino,
+        CARPETA_NUMEROS,
         nombre_carpeta_volumen(volumen),
         nombre_carpeta_numero(numero),
     )
@@ -912,16 +925,80 @@ def ruta_mapa(opciones):
     return os.path.join(opciones.destino, NOMBRE_MAPA)
 
 
+def ruta_config(opciones):
+    """Ruta de los ajustes personales dentro de la carpeta de destino."""
+    return os.path.join(opciones.destino, NOMBRE_CONFIG)
+
+
+def leer_config(opciones):
+    """Lee los ajustes personales, o devuelve unos vacíos si no los hay."""
+    ruta = ruta_config(opciones)
+    if not os.path.isfile(ruta):
+        return {}
+    with open(ruta, encoding="utf-8") as fichero:
+        return json.load(fichero)
+
+
+def escribir_config(opciones):
+    """Escribe los ajustes personales en la carpeta de destino."""
+    ruta = ruta_config(opciones)
+    if not opciones.simulacion:
+        if not os.path.isdir(opciones.destino):
+            os.makedirs(opciones.destino)
+        with open(ruta, "w", encoding="utf-8") as fichero:
+            json.dump(opciones.config, fichero, ensure_ascii=False, indent=2)
+            fichero.write("\n")
+    return ruta
+
+
 def leer_mapa(opciones):
     """Lee el mapa del disco, o devuelve None si todavía no existe."""
     ruta = ruta_mapa(opciones)
     if not os.path.isfile(ruta):
         return None
     with open(ruta, encoding="utf-8") as fichero:
-        return json.load(fichero)
+        mapa = json.load(fichero)
+    migrar_mapa(mapa, opciones)
+    return mapa
 
 
-def preparar_cookie(mapa, opciones):
+def rutas_bajo_numeros(mapa):
+    """Lleva a «numeros» las rutas que un mapa anterior anotó en la raíz.
+
+    Las carpetas de cada número colgaban del destino; ahora viven todas
+    juntas, así que lo anotado entonces ya no apunta a donde toca.
+    """
+    prefijo = CARPETA_NUMEROS + "/"
+    movidas = 0
+    for volumen in mapa.get("volumenes", ()):
+        for numero in volumen.get("numeros", ()):
+            for entrada in [numero] + articulos_de(numero.get("articulos", ())):
+                ficha = entrada.get("fichero")
+                if ficha and not ficha["ruta"].startswith(prefijo):
+                    ficha["ruta"] = prefijo + ficha["ruta"]
+                    movidas += 1
+    return movidas
+
+
+def migrar_mapa(mapa, opciones):
+    """Pone al día un mapa escrito por una versión anterior del programa."""
+    movidas = rutas_bajo_numeros(mapa)
+    # la cookie y las tablas vivían en el mapa; ahora son ajustes personales
+    mudadas = [clave for clave in CLAVES_CONFIG if clave in mapa]
+    for clave in mudadas:
+        opciones.config.setdefault(clave, mapa.pop(clave))
+
+    if movidas:
+        informar(opciones, "  %d rutas llevadas a «%s»" % (movidas, CARPETA_NUMEROS))
+    if mudadas:
+        informar(
+            opciones, "  %s a %s" % (enumerar(mudadas), escribir_config(opciones))
+        )
+    if movidas or mudadas:
+        informar(opciones, "  mapa al día en %s" % escribir_mapa(mapa, opciones))
+
+
+def preparar_cookie(opciones):
     """Deja lista la sesión de socio, si la hay. Indica si se puede seguir.
 
     Manda la cookie que se haya indicado a mano; en su defecto se entra con
@@ -930,6 +1007,7 @@ def preparar_cookie(mapa, opciones):
     """
     valor = opciones.cookie
     recien_accedido = False
+    opciones.sesion = True  # se mira la sesión: la cookie queda al día después
 
     if not valor and opciones.usuario:
         informar(opciones, "Accediendo como %s ..." % opciones.usuario)
@@ -941,7 +1019,7 @@ def preparar_cookie(mapa, opciones):
         recien_accedido = True
 
     if not valor:
-        valor = (mapa or {}).get("cookie")
+        valor = opciones.config.get("cookie")
 
     opciones.cookie_activa = valor
     if valor:
@@ -951,26 +1029,20 @@ def preparar_cookie(mapa, opciones):
     return True
 
 
-def anotar_cookie(mapa, opciones):
-    """Guarda la cookie en el mapa, o la retira si ha dejado de valer."""
+def anotar_cookie(opciones):
+    """Guarda la cookie en los ajustes, o la retira si ha dejado de valer."""
     if opciones.cookie_activa:
-        mapa["cookie"] = opciones.cookie_activa
+        opciones.config["cookie"] = opciones.cookie_activa
     else:
-        mapa.pop("cookie", None)
+        opciones.config.pop("cookie", None)
 
 
 def escribir_mapa(mapa, opciones):
-    """Escribe el mapa en la carpeta de destino."""
+    """Escribe el mapa y, si hubo sesión, deja al día los ajustes personales."""
     ruta = ruta_mapa(opciones)
-    anotar_cookie(mapa, opciones)
-
-    # lo corto va delante, que si no queda sepultado bajo los volúmenes
-    contenido = {}
-    for clave in ("cookie", CLAVE_EXCEPCIONES, CLAVE_EQUIVALENCIAS):
-        if mapa.get(clave) is not None:
-            contenido[clave] = mapa[clave]
-    contenido.update(mapa)
-    mapa = contenido
+    if opciones.sesion:
+        anotar_cookie(opciones)
+        escribir_config(opciones)
 
     if not opciones.simulacion:
         if not os.path.isdir(opciones.destino):
@@ -1073,7 +1145,7 @@ def fusionar_mapa(volumenes, anterior):
 def mapear_indice(opciones):
     """Descarga el índice general de volúmenes y escribe el mapa."""
     anterior = leer_mapa(opciones)
-    if not preparar_cookie(anterior, opciones):
+    if not preparar_cookie(opciones):
         return 1
 
     informar(opciones, "Descargando %s ..." % URL_INDICE)
@@ -1123,7 +1195,7 @@ def mapear_numero(opciones):
             "no existe %s; ejecuta antes --mapa para crearlo" % ruta_mapa(opciones)
         )
 
-    if not preparar_cookie(mapa, opciones):
+    if not preparar_cookie(opciones):
         return 1
 
     volumen, numero = buscar_numero(mapa, opciones.vol, opciones.num, opciones.sup)
@@ -1456,7 +1528,7 @@ def descargar_uno(opciones):
             "no existe %s; ejecuta antes --mapa para crearlo" % ruta_mapa(opciones)
         )
 
-    if not preparar_cookie(mapa, opciones):
+    if not preparar_cookie(opciones):
         return 1
 
     volumen, numero = buscar_numero(mapa, opciones.vol, opciones.num, opciones.sup)
@@ -1497,7 +1569,7 @@ def descargar_todo(opciones):
             "no existe %s; ejecuta antes --mapa para crearlo" % ruta_mapa(opciones)
         )
 
-    if not preparar_cookie(mapa, opciones):
+    if not preparar_cookie(opciones):
         return 1
 
     numeros = [
@@ -1584,7 +1656,7 @@ td img { display: block; height: 118px; object-fit: cover; width: 84px; }
 
 /* --- página de un número ------------------------------------------- */
 
-.navegacion { line-height: 2; margin-bottom: 1.5rem; }
+.navegacion { line-height: 2.2; margin-bottom: 1.5rem; }
 .navegacion a, .navegacion span {
     border: 1px solid #ccd;
     border-radius: 3px;
@@ -1654,8 +1726,110 @@ h1 a:hover, h2 a:hover, h3 a:hover { text-decoration: underline; }
 .letras a:hover { background: #eef; }
 .letras span { border-color: #eee; color: #ccc; }  /* letra sin autores */
 
+/* --- buscador -------------------------------------------------------- */
+
+/* el formulario, que va al final de la barra de navegación */
+.buscar { display: inline-block; margin-left: 0.4rem; white-space: nowrap; }
+.buscar input, .buscar button {
+    border: 1px solid #ccd;
+    border-radius: 3px;
+    font: inherit;
+    padding: 0.15rem 0.4rem;
+}
+.buscar input { width: 12rem; }
+.buscar button { background: #fff; color: #036; cursor: pointer; }
+.buscar button:hover { background: #eef; }
+
+/* cuántos artículos han salido */
+.cuenta { color: #555; margin-bottom: 1.5rem; }
+
 /* las maneras en que un autor ha firmado */
 .firmas { color: #555; font-size: 0.9rem; margin-bottom: 1.5rem; }
+"""
+
+# Todo el trabajo de búsqueda lo hace el navegador: el sitio es estático y ha
+# de poder abrirse tanto colgado de un servidor como con un doble clic.
+BUSCADOR = r"""/* Generado por gaceta.py; los cambios a mano se pierden al rehacer el sitio. */
+
+function normalizar(texto) {
+    /* sin tildes y en minúsculas, como las claves que trae busqueda.js */
+    return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+                .toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+function loQuePiden() {
+    return new URLSearchParams(location.search).get("q") || "";
+}
+
+function agrupar(consulta) {
+    /* Los artículos vienen en el orden del archivo, así que se agrupan según
+       van saliendo y al final se les da la vuelta a los números; dentro de
+       cada uno se leen como en su página, del primero al último. */
+    var bloques = [], bloque = null, total = 0;
+    for (var i = 0; i < BUSQUEDA.articulos.length; i++) {
+        var articulo = BUSQUEDA.articulos[i];
+        if (articulo[0].indexOf(consulta) < 0) { continue; }
+        total++;
+        if (bloque === null || bloque.numero !== articulo[1]) {
+            bloque = { numero: articulo[1], tandas: [] };
+            bloques.push(bloque);
+        }
+        var tanda = bloque.tandas[bloque.tandas.length - 1];
+        if (!tanda || tanda.seccion !== articulo[2]) {
+            tanda = { seccion: articulo[2], citas: [] };
+            bloque.tandas.push(tanda);
+        }
+        tanda.citas.push(articulo[3]);
+    }
+    bloques.reverse();
+    return { bloques: bloques, total: total };
+}
+
+function montar(bloques) {
+    var trozos = [];
+    for (var i = 0; i < bloques.length; i++) {
+        trozos.push(BUSQUEDA.numeros[bloques[i].numero]);
+        var tandas = bloques[i].tandas;
+        for (var j = 0; j < tandas.length; j++) {
+            if (tandas[j].seccion >= 0) {
+                trozos.push(BUSQUEDA.secciones[tandas[j].seccion]);
+            }
+            trozos.push(tandas[j].citas.join("\n"));
+        }
+    }
+    return trozos.join("\n");
+}
+
+function contar(total, pedido) {
+    if (total === 0) {
+        return "Ningún artículo lleva «" + pedido + "» en el título.";
+    }
+    if (total === 1) {
+        return "Un artículo lleva «" + pedido + "» en el título.";
+    }
+    return total + " artículos llevan «" + pedido + "» en el título.";
+}
+
+function buscar() {
+    var pedido = loQuePiden().trim();
+    var casilla = document.querySelector(".buscar input");
+    if (casilla) { casilla.value = pedido; }
+
+    var cuenta = document.getElementById("cuenta");
+    var resultados = document.getElementById("resultados");
+    if (!pedido) {
+        cuenta.textContent = "Escribe un título, o parte de él, en el buscador.";
+        resultados.innerHTML = "";
+        return;
+    }
+
+    document.title = pedido + " - Búsqueda - La Gaceta de la RSME";
+    var hallado = agrupar(normalizar(pedido));
+    cuenta.textContent = contar(hallado.total, pedido);
+    resultados.innerHTML = montar(hallado.bloques);
+}
+
+document.addEventListener("DOMContentLoaded", buscar);
 """
 
 PLANTILLA_PAGINA = """<!DOCTYPE html>
@@ -1694,7 +1868,8 @@ def ancla_volumen(volumen):
 
 def ruta_pagina_numero(volumen, numero):
     """Ruta de la página de un número, que vive en su propia carpeta."""
-    return "%s/%s/%s" % (
+    return "%s/%s/%s/%s" % (
+        CARPETA_NUMEROS,
         nombre_carpeta_volumen(volumen),
         nombre_carpeta_numero(numero),
         NOMBRE_PAGINA,
@@ -1780,7 +1955,7 @@ def pagina_indice(mapa, opciones):
 </html>
 """ % (
         enlace_web(NOMBRE_ESTILO),
-        barra_navegacion(botones_indices("", salvo=NOMBRE_PAGINA)),
+        barra_navegacion(botones_indices("", salvo=NOMBRE_PAGINA), ""),
         barra_volumenes(volumenes),
         "\n".join(filas),
     )
@@ -1959,9 +2134,27 @@ def envolver_pagina(titulo, cuerpo, carpeta, destino=None):
     }
 
 
-def barra_navegacion(botones):
-    """Envuelve una tanda de botones en su barra."""
-    return '<p class="navegacion">%s</p>' % "\n".join(botones)
+def formulario_busqueda(carpeta):
+    """El buscador, que acompaña a la barra de navegación de cada página."""
+    return (
+        '<form class="buscar" action="%s" method="get" role="search">'
+        '<input type="search" name="%s" placeholder="Buscar por título" '
+        'aria-label="Buscar por título">'
+        "<button>Buscar</button>"
+        "</form>"
+    ) % (enlace_desde(NOMBRE_BUSQUEDA, carpeta), PARAMETRO_BUSQUEDA)
+
+
+def barra_navegacion(botones, carpeta):
+    """Envuelve una tanda de botones y el buscador en su barra.
+
+    Va en un <div> y no en un <p> porque un formulario no cabe dentro de un
+    párrafo: el navegador lo cerraría al toparse con él, y el buscador
+    acabaría en la línea de abajo.
+    """
+    return '<div class="navegacion">%s</div>' % "\n".join(
+        list(botones) + [formulario_busqueda(carpeta)]
+    )
 
 
 def botones_indices(carpeta, salvo=None):
@@ -1999,7 +2192,7 @@ def navegacion_numero(numeros, posicion, carpeta):
         boton_web("Siguiente ›", salto(posicion + 1)),
         boton_web("Último »", salto(len(numeros) - 1)),
     ]
-    return barra_navegacion(botones)
+    return barra_navegacion(botones, carpeta)
 
 
 def columna_portada(volumen, numero, carpeta, opciones):
@@ -2180,7 +2373,8 @@ def pagina_secciones(secciones, opciones):
     carpeta = posixpath.dirname(RUTA_SECCIONES)
     lineas = [linea_indice(seccion, carpeta) for seccion in secciones]
     cuerpo = "\n".join(
-        [barra_navegacion(botones_indices(carpeta, salvo=RUTA_SECCIONES))] + lineas
+        [barra_navegacion(botones_indices(carpeta, salvo=RUTA_SECCIONES), carpeta)]
+        + lineas
     )
     return envolver_pagina("Secciones", cuerpo, carpeta)
 
@@ -2220,7 +2414,8 @@ def pagina_seccion(secciones, posicion, opciones, indices=None):
         + [
             boton_web("‹ Anterior", salto(posicion - 1)),
             boton_web("Siguiente ›", salto(posicion + 1)),
-        ]
+        ],
+        carpeta,
     )
 
     tandas = list(reversed(seccion["tandas"]))
@@ -2304,37 +2499,37 @@ def es_lista_de_grupos(tabla):
     return isinstance(tabla, list) and all(es_lista_de_textos(x) for x in tabla)
 
 
-def tabla_del_mapa(mapa, opciones, clave, fabrica, tiene_forma):
-    """Una de las tablas que el usuario puede retocar en sitemap.json.
+def tabla_de_ajustes(opciones, clave, fabrica, tiene_forma):
+    """Una de las tablas que el usuario puede retocar en config.json.
 
     Devuelve la tabla y si ha habido que rellenarla con la de fábrica, que es
-    lo que obliga a reescribir el mapa.
+    lo que obliga a reescribir los ajustes.
     """
-    tabla = mapa.get(clave)
+    tabla = opciones.config.get(clave)
     if tabla is None:
-        mapa[clave] = copy.deepcopy(fabrica)
-        return mapa[clave], True
+        opciones.config[clave] = copy.deepcopy(fabrica)
+        return opciones.config[clave], True
 
     if not tiene_forma(tabla):
         avisar(
             "la clave «%s» de %s no tiene la forma esperada; se usa la de fábrica"
-            % (clave, ruta_mapa(opciones))
+            % (clave, ruta_config(opciones))
         )
         return copy.deepcopy(fabrica), False
 
     return tabla, False
 
 
-def preparar_tablas(mapa, opciones):
-    """Las tablas de excepciones y de equivalencias, del mapa o de fábrica.
+def preparar_tablas(opciones):
+    """Las tablas de excepciones y de equivalencias, de los ajustes o de fábrica.
 
-    Las que falten se le anotan al mapa, para poder retocarlas a mano.
+    Las que falten se anotan en config.json, para poder retocarlas a mano.
     """
-    excepciones, falta_una = tabla_del_mapa(
-        mapa, opciones, CLAVE_EXCEPCIONES, EXCEPCIONES, es_lista_de_textos
+    excepciones, falta_una = tabla_de_ajustes(
+        opciones, CLAVE_EXCEPCIONES, EXCEPCIONES, es_lista_de_textos
     )
-    equivalencias, falta_otra = tabla_del_mapa(
-        mapa, opciones, CLAVE_EQUIVALENCIAS, EQUIVALENCIAS, es_lista_de_grupos
+    equivalencias, falta_otra = tabla_de_ajustes(
+        opciones, CLAVE_EQUIVALENCIAS, EQUIVALENCIAS, es_lista_de_grupos
     )
 
     faltan = [
@@ -2343,13 +2538,11 @@ def preparar_tablas(mapa, opciones):
         if falta
     ]
     if faltan:
-        # --web no toca la sesión, así que la cookie se queda como estaba
-        opciones.cookie_activa = mapa.get("cookie")
         rotulo = "se anotaría" if opciones.simulacion else "anotada"
         informar(
             opciones,
             "  %s la tabla de %s en %s"
-            % (rotulo, " y la de ".join(faltan), escribir_mapa(mapa, opciones)),
+            % (rotulo, " y la de ".join(faltan), escribir_config(opciones)),
         )
 
     return excepciones, equivalencias
@@ -2588,7 +2781,7 @@ def pagina_autores(autores, opciones):
     """El índice de autores, por orden alfabético y agrupado por letras."""
     carpeta = posixpath.dirname(RUTA_AUTORES)
     trozos = [
-        barra_navegacion(botones_indices(carpeta, salvo=RUTA_AUTORES)),
+        barra_navegacion(botones_indices(carpeta, salvo=RUTA_AUTORES), carpeta),
         barra_letras(autores, carpeta),
     ]
     letra_abierta = None
@@ -2636,7 +2829,7 @@ def pagina_autor(autores, posicion, opciones, indices=None):
         boton_web("Siguiente ›", salto(posicion + 1)),
         boton_web("Último »", salto(len(autores) - 1)),
     ]
-    trozos = [barra_navegacion(botones), linea_firmas(autor)]
+    trozos = [barra_navegacion(botones, carpeta), linea_firmas(autor)]
     for volumen, numero, tandas in tandas_del_autor(autor):
         trozos.append(encabezado_numero(volumen, numero, carpeta))
         for seccion, articulos in tandas:
@@ -2647,6 +2840,58 @@ def pagina_autor(autores, posicion, opciones, indices=None):
                 for articulo in articulos
             )
     return envolver_pagina(autor["nombre"], "\n".join(trozos), carpeta)
+
+
+def clave_busqueda(nombre):
+    """Título normalizado, como lo escribe y lo busca buscador.js."""
+    return " ".join(sin_tildes(nombre).lower().split())
+
+
+def indice_busqueda(numeros, opciones, indices):
+    """El índice que el navegador recorre al buscar, listo para servirlo.
+
+    Va como guion y no como JSON porque el sitio también se abre con un doble
+    clic, y desde file:// el navegador no deja leer un fichero suelto pero sí
+    cargar un guion. Las citas y los encabezados vienen ya montados, relativos
+    a la raíz, que es donde vive la página de resultados.
+    """
+    encabezados, tandas, articulos = [], {}, []
+    for volumen, numero in numeros:
+        secciones = secciones_del_numero(numero)
+        encabezados.append(encabezado_numero(volumen, numero, ""))
+        for articulo in articulos_de(numero["articulos"]):
+            seccion = secciones.get(id(articulo))
+            articulos.append(
+                [
+                    clave_busqueda(articulo["nombre"]),
+                    len(encabezados) - 1,
+                    tandas.setdefault(seccion, len(tandas)) if seccion else -1,
+                    cita_articulo(articulo, "", opciones, indices),
+                ]
+            )
+
+    datos = {
+        "numeros": encabezados,
+        "secciones": [encabezado_seccion(nombre, "", 3, indices) for nombre in tandas],
+        "articulos": articulos,
+    }
+    return "var BUSQUEDA = %s;\n" % json.dumps(
+        datos, ensure_ascii=False, separators=(",", ":")
+    )
+
+
+def pagina_busqueda(opciones):
+    """La página de resultados, que el guion rellena en el propio navegador."""
+    cuerpo = """%s
+<p class="cuenta" id="cuenta">Hace falta JavaScript para buscar.</p>
+<div id="resultados"></div>
+<script src="%s"></script>
+<script src="%s"></script>""" % (
+        barra_navegacion(botones_indices(""), ""),
+        enlace_web(NOMBRE_INDICE),
+        enlace_web(NOMBRE_BUSCADOR),
+    )
+    return envolver_pagina("Búsqueda", cuerpo, "")
 
 
 def escribir_web(nombre, contenido, opciones, callado=False):
@@ -2733,7 +2978,7 @@ def generar_web(opciones):
         for volumen in mapa["volumenes"]
         for numero in volumen["numeros"]
     ]
-    excepciones, equivalencias = preparar_tablas(mapa, opciones)
+    excepciones, equivalencias = preparar_tablas(opciones)
     secciones = agrupar_secciones(numeros)
     autores = agrupar_autores(numeros, excepciones, equivalencias)
     # dónde vive la página de cada sección y de cada autor, para enlazarlas
@@ -2782,6 +3027,12 @@ def generar_web(opciones):
             callado=True,
         )
     informar(opciones, "  %d páginas de autor" % len(autores))
+
+    escribir_web(NOMBRE_BUSQUEDA, pagina_busqueda(opciones), opciones)
+    escribir_web(NOMBRE_BUSCADOR, BUSCADOR, opciones)
+    escribir_web(
+        NOMBRE_INDICE, indice_busqueda(numeros, opciones, indices), opciones
+    )
 
     # lo que quedó de una generación anterior sobra: los nombres cambian
     escritos = {RUTA_SECCIONES, RUTA_AUTORES}
@@ -2914,6 +3165,8 @@ def principal(argumentos):
 
     opciones, sueltos = analizador.parse_args(argumentos)
     opciones.cookie_activa = None
+    opciones.sesion = False
+    opciones.config = leer_config(opciones)
 
     if sueltos:
         analizador.error("argumento inesperado: %s" % sueltos[0])
