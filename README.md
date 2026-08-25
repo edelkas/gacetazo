@@ -289,7 +289,10 @@ título y lleva a `buscar.html` con lo pedido en la dirección
 (`buscar.html?q=gauss`). Los resultados salen del más reciente al más antiguo,
 agrupados por número y por sección y formateados como en el resto del sitio.
 Se buscan coincidencias sueltas, sin distinguir mayúsculas ni tildes: *«gauss»*
-encuentra *«Gauss y la regla de signos de Descartes»*.
+encuentra *«Gauss y la regla de signos de Descartes»*. Lo pedido se parte por
+los espacios y cada trozo ha de aparecer en el título, en cualquier orden y sin
+tener que estar entero: *«mat oli»* encuentra *«Olimpiada Matemática
+Española»*.
 
 El sitio es estático, así que el trabajo lo hace el navegador con dos ficheros
 más en la raíz:
@@ -517,5 +520,6 @@ sección. Hoy el archivo completo se analiza sin un solo aviso.
 - [x] Web local: índice de secciones, con una página por sección.
 - [x] Web local: índice de autores, con una página por autor.
 - [x] Web local: versión con enlaces externos, para publicar sin los PDF.
-- [x] Web local: búsqueda de artículos por título, en el navegador.
+- [x] Web local: búsqueda de artículos por título, en el navegador, con
+      varios términos a la vez.
 - [x] Publicación en GitHub Pages desde una rama aparte.

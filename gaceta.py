@@ -1828,6 +1828,19 @@ function normalizar(texto) {
                 .toLowerCase().replace(/\s+/g, " ").trim();
 }
 
+function terminos(pedido) {
+    /* cada palabra por su lado, que 'mat oli' halle 'Olimpiada Matemática' */
+    return pedido.split(/\s+/).filter(function (trozo) { return trozo; });
+}
+
+function casan(clave, buscados) {
+    /* todos los términos han de estar, aunque sea sueltos y en desorden */
+    for (var i = 0; i < buscados.length; i++) {
+        if (clave.indexOf(buscados[i]) < 0) { return false; }
+    }
+    return true;
+}
+
 function claves() {
     if (CLAVES === null) {
         CLAVES = BUSQUEDA.articulos.map(function (articulo) {
@@ -1895,13 +1908,13 @@ function cita(articulo) {
     return '<p class="cita">' + partes.join(", ") + "</p>";
 }
 
-function agrupar(consulta) {
+function agrupar(buscados) {
     /* Los artículos vienen en el orden del archivo, así que se agrupan según
        van saliendo y al final se les da la vuelta a los números; dentro de
        cada uno se leen como en su página, del primero al último. */
     var bloques = [], bloque = null, total = 0, todas = claves();
     for (var i = 0; i < BUSQUEDA.articulos.length; i++) {
-        if (todas[i].indexOf(consulta) < 0) { continue; }
+        if (!casan(todas[i], buscados)) { continue; }
         var articulo = BUSQUEDA.articulos[i];
         total++;
         if (bloque === null || bloque.numero !== articulo[1]) {
@@ -1934,14 +1947,18 @@ function montar(bloques) {
     return trozos.join("\n");
 }
 
-function contar(total, pedido) {
+function contar(total, pedidos) {
+    /* el verbo concuerda con los artículos, no con los términos */
+    var cuales = enumerar(pedidos.map(function (pedido) {
+        return "«" + pedido + "»";
+    }));
     if (total === 0) {
-        return "Ningún artículo lleva «" + pedido + "» en el título.";
+        return "Ningún artículo lleva " + cuales + " en el título.";
     }
     if (total === 1) {
-        return "Un artículo lleva «" + pedido + "» en el título.";
+        return "Un artículo lleva " + cuales + " en el título.";
     }
-    return total + " artículos llevan «" + pedido + "» en el título.";
+    return total + " artículos llevan " + cuales + " en el título.";
 }
 
 function buscar() {
@@ -1952,14 +1969,18 @@ function buscar() {
     var cuenta = document.getElementById("cuenta");
     var resultados = document.getElementById("resultados");
     if (!pedido) {
-        cuenta.textContent = "Escribe un título, o parte de él, en el buscador.";
+        cuenta.textContent = "Escribe en el buscador una o varias palabras"
+            + " del título.";
         resultados.innerHTML = "";
         return;
     }
 
     document.title = pedido + " - Búsqueda - La Gaceta de la RSME";
-    var hallado = agrupar(normalizar(pedido));
-    cuenta.textContent = contar(hallado.total, pedido);
+    var pedidos = terminos(pedido);
+    var hallado = agrupar(pedidos.map(function (suelto) {
+        return normalizar(suelto);
+    }));
+    cuenta.textContent = contar(hallado.total, pedidos);
     resultados.innerHTML = montar(hallado.bloques);
 }
 
