@@ -78,6 +78,7 @@ CLAVES_CONFIG = ("cookie", CLAVE_EXCEPCIONES, CLAVE_EQUIVALENCIAS)
 
 # los DOI se enlazan a traves del resolutor oficial
 URL_DOI = "https://www.doi.org/"
+URL_ARTICULO = URL_BASE + "abrir.php?id="
 
 # el formulario de acceso de la portada manda a control.php estos tres campos,
 # y el servidor responde redirigiendo: a la dirección pedida si las
@@ -168,6 +169,10 @@ RE_DOI = re.compile(r"DOI:\s*(\S+)")
 # la revista lista los autores separados por comas y con la conjunción al
 # final, que ante palabra que empieza por i- se escribe "e"
 RE_AUTORES = re.compile(r"\s*,\s*|\s+[ye]\s+")
+
+# lo que no vale en el nombre de una página del sitio: fuera del ASCII más
+# llano hay navegadores viejos que se lían con los escapes de la dirección
+RE_NO_URL = re.compile(r"[^A-Za-z0-9._-]+")
 # marca con la que se aparta un nombre para que no lo parta la separación
 MARCA = "\x00%d\x00"
 # la inicial de un nombre: «J», «J.», y la «M.ª» con que se abrevia María
@@ -491,6 +496,15 @@ def sanear_nombre(nombre):
     if limpio.upper() in RESERVADOS:
         return limpio + "_"
     return limpio
+
+
+def nombre_url(texto):
+    """Convierte un nombre en otro que sirva tal cual dentro de una dirección.
+
+    Se le quitan las tildes (y la eñe se queda en ene), y todo lo que no sea
+    letra, cifra, punto, guion o subrayado se vuelve un guion.
+    """
+    return RE_NO_URL.sub("-", sin_tildes(texto)).strip("-._")
 
 
 def nombre_libre(carpeta, nombre, usados):
@@ -875,18 +889,18 @@ def es_suplemento(numero):
 
 
 def nombre_carpeta_volumen(volumen):
-    """Nombre de carpeta de un volumen, por ejemplo 'Vol 01 (1998)'."""
-    return "Vol %02d (%d)" % (volumen["num"], volumen["año"])
+    """Nombre de carpeta de un volumen, por ejemplo 'vol.01-1998'."""
+    return "vol.%02d-%d" % (volumen["num"], volumen["año"])
 
 
 def nombre_carpeta_numero(numero):
-    """Nombre de subcarpeta de un número: '2', o '2 sup' si es suplemento.
+    """Nombre de subcarpeta de un número: '2', o '2-sup' si es suplemento.
 
     Un suplemento comparte el número de aquel al que acompaña, así que hace
     falta el sufijo para que no se pisen dentro del volumen.
     """
     if es_suplemento(numero):
-        return "%d sup" % numero["num"]
+        return "%d-sup" % numero["num"]
     return str(numero["num"])
 
 
@@ -962,39 +976,88 @@ def leer_mapa(opciones):
     return mapa
 
 
-def rutas_bajo_numeros(mapa):
-    """Lleva a «numeros» las rutas que un mapa anterior anotó en la raíz.
+def renombrar(viejo, nuevo, opciones):
+    """Cambia el nombre de una carpeta del archivo, si hace falta y se puede."""
+    if viejo == nuevo or not os.path.isdir(viejo):
+        return False
+    if os.path.exists(nuevo):
+        avisar("no se renombra %s porque ya existe %s" % (viejo, nuevo))
+        return False
+    if not opciones.simulacion:
+        # la carpeta de números puede no existir todavía, si el archivo viene
+        # de cuando los volúmenes colgaban de la raíz
+        os.makedirs(os.path.dirname(nuevo), exist_ok=True)
+        os.rename(viejo, nuevo)
+    return True
 
-    Las carpetas de cada número colgaban del destino; ahora viven todas
-    juntas, así que lo anotado entonces ya no apunta a donde toca.
+
+def renombrar_carpetas(mapa, opciones):
+    """Pone al día las carpetas que una versión anterior nombró de otro modo.
+
+    Se llamaban 'Vol 01 (1998)' y '2 sup', con espacios y paréntesis que la
+    dirección de cada página tenía que escapar.
     """
-    prefijo = CARPETA_NUMEROS + "/"
-    movidas = 0
+    raiz = os.path.join(opciones.destino, CARPETA_NUMEROS)
+    renombradas = 0
+    for volumen in mapa.get("volumenes", ()):
+        antes = "Vol %02d (%d)" % (volumen["num"], volumen["año"])
+        ahora = os.path.join(raiz, nombre_carpeta_volumen(volumen))
+        # las versiones más viejas dejaban los volúmenes en la raíz del archivo
+        for viejo in (os.path.join(raiz, antes), os.path.join(opciones.destino, antes)):
+            renombradas += renombrar(viejo, ahora, opciones)
+        for numero in volumen.get("numeros", ()):
+            if es_suplemento(numero):
+                renombradas += renombrar(
+                    os.path.join(ahora, "%d sup" % numero["num"]),
+                    os.path.join(ahora, nombre_carpeta_numero(numero)),
+                    opciones,
+                )
+    return renombradas
+
+
+def rutas_al_dia(mapa):
+    """Rehace la ruta anotada de cada fichero descargado.
+
+    Del camino sólo se conserva el nombre del fichero; lo demás se vuelve a
+    componer, así que da igual cómo se llamaran las carpetas en su día.
+    """
+    rehechas = 0
     for volumen in mapa.get("volumenes", ()):
         for numero in volumen.get("numeros", ()):
+            carpeta = "%s/%s/%s" % (
+                CARPETA_NUMEROS,
+                nombre_carpeta_volumen(volumen),
+                nombre_carpeta_numero(numero),
+            )
             for entrada in [numero] + articulos_de(numero.get("articulos", ())):
                 ficha = entrada.get("fichero")
-                if ficha and not ficha["ruta"].startswith(prefijo):
-                    ficha["ruta"] = prefijo + ficha["ruta"]
-                    movidas += 1
-    return movidas
+                if ficha is None:
+                    continue
+                nueva = "%s/%s" % (carpeta, ficha["ruta"].rsplit("/", 1)[-1])
+                if nueva != ficha["ruta"]:
+                    ficha["ruta"] = nueva
+                    rehechas += 1
+    return rehechas
 
 
 def migrar_mapa(mapa, opciones):
     """Pone al día un mapa escrito por una versión anterior del programa."""
-    movidas = rutas_bajo_numeros(mapa)
+    renombradas = renombrar_carpetas(mapa, opciones)
+    rehechas = rutas_al_dia(mapa)
     # la cookie y las tablas vivían en el mapa; ahora son ajustes personales
     mudadas = [clave for clave in CLAVES_CONFIG if clave in mapa]
     for clave in mudadas:
         opciones.config.setdefault(clave, mapa.pop(clave))
 
-    if movidas:
-        informar(opciones, "  %d rutas llevadas a «%s»" % (movidas, CARPETA_NUMEROS))
+    if renombradas:
+        informar(opciones, "  %d carpetas renombradas" % renombradas)
+    if rehechas:
+        informar(opciones, "  %d rutas rehechas" % rehechas)
     if mudadas:
         informar(
             opciones, "  %s a %s" % (enumerar(mudadas), escribir_config(opciones))
         )
-    if movidas or mudadas:
+    if renombradas or rehechas or mudadas:
         informar(opciones, "  mapa al día en %s" % escribir_mapa(mapa, opciones))
 
 
@@ -1751,24 +1814,93 @@ h1 a:hover, h2 a:hover, h3 a:hover { text-decoration: underline; }
 # de poder abrirse tanto colgado de un servidor como con un doble clic.
 BUSCADOR = r"""/* Generado por gaceta.py; los cambios a mano se pierden al rehacer el sitio. */
 
+var URL_ARTICULO = "https://gaceta.rsme.es/abrir.php?id=";
+var URL_DOI = "https://www.doi.org/";
+
+/* Las claves por las que se busca: los títulos, normalizados una sola vez. */
+var CLAVES = null;
+
 function normalizar(texto) {
-    /* sin tildes y en minúsculas, como las claves que trae busqueda.js */
+    /* sin tildes y en minúsculas, como se normaliza también al generar */
     return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
                 .toLowerCase().replace(/\s+/g, " ").trim();
 }
 
-function loQuePiden() {
-    return new URLSearchParams(location.search).get("q") || "";
+function claves() {
+    if (CLAVES === null) {
+        CLAVES = BUSQUEDA.articulos.map(function (articulo) {
+            return normalizar(articulo[0]);
+        });
+    }
+    return CLAVES;
+}
+
+function escapar(texto) {
+    return String(texto).replace(/&/g, "&amp;").replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
+}
+
+function enlace(destino, rotulo, clase) {
+    return "<a" + (clase ? ' class="' + clase + '"' : "")
+        + ' href="' + destino + '">' + rotulo + "</a>";
+}
+
+function enlaceRevista(dato) {
+    /* un número es el id de abrir.php; una cadena, un PDF suelto */
+    return escapar(typeof dato === "number" ? URL_ARTICULO + dato : dato);
+}
+
+function enumerar(trozos) {
+    /* como se enumera en castellano: 'a, b y c' */
+    if (trozos.length < 2) { return trozos.join(""); }
+    return trozos.slice(0, -1).join(", ") + " y " + trozos[trozos.length - 1];
+}
+
+function autores(quienes) {
+    /* una cadena cuando no se pudieron separar; si no, índices en la tabla */
+    if (typeof quienes === "string") { return escapar(quienes); }
+    var trozos = [];
+    for (var i = 0; i < quienes.length; i++) {
+        var firma = BUSQUEDA.firmas[quienes[i]];
+        var rotulo = escapar(firma[0]);
+        trozos.push(firma[1] ? enlace(firma[1], rotulo) : rotulo);
+    }
+    return enumerar(trozos);
+}
+
+function paginas(rango) {
+    if (rango[0] === rango[1]) { return "pág. " + rango[0]; }
+    return "págs. " + rango[0] + "-" + rango[1];
+}
+
+function cita(articulo) {
+    /* [título, número, sección, autores, revista, páginas, doi, fichero] */
+    var nombre = "<strong>" + escapar(articulo[0]) + "</strong>";
+    var revista = articulo[4] ? enlaceRevista(articulo[4]) : "";
+    var destino = BUSQUEDA.externa ? revista : (articulo[7] || "");
+    var partes = [destino ? enlace(destino, nombre) : nombre];
+
+    if (articulo[3]) { partes.push("<em>" + autores(articulo[3]) + "</em>"); }
+    if (articulo[5]) { partes.push(paginas(articulo[5])); }
+    if (articulo[6]) {
+        var doi = escapar(URL_DOI + articulo[6]);
+        partes.push(enlace(doi, doi, "doi"));
+    }
+    /* con la web externa el título ya lleva a la revista, y sobra el remate */
+    if (revista && !BUSQUEDA.externa) {
+        partes.push(enlace(revista, "RSME", "rsme"));
+    }
+    return '<p class="cita">' + partes.join(", ") + "</p>";
 }
 
 function agrupar(consulta) {
     /* Los artículos vienen en el orden del archivo, así que se agrupan según
        van saliendo y al final se les da la vuelta a los números; dentro de
        cada uno se leen como en su página, del primero al último. */
-    var bloques = [], bloque = null, total = 0;
+    var bloques = [], bloque = null, total = 0, todas = claves();
     for (var i = 0; i < BUSQUEDA.articulos.length; i++) {
+        if (todas[i].indexOf(consulta) < 0) { continue; }
         var articulo = BUSQUEDA.articulos[i];
-        if (articulo[0].indexOf(consulta) < 0) { continue; }
         total++;
         if (bloque === null || bloque.numero !== articulo[1]) {
             bloque = { numero: articulo[1], tandas: [] };
@@ -1779,7 +1911,7 @@ function agrupar(consulta) {
             tanda = { seccion: articulo[2], citas: [] };
             bloque.tandas.push(tanda);
         }
-        tanda.citas.push(articulo[3]);
+        tanda.citas.push(cita(articulo));
     }
     bloques.reverse();
     return { bloques: bloques, total: total };
@@ -1827,6 +1959,10 @@ function buscar() {
     var hallado = agrupar(normalizar(pedido));
     cuenta.textContent = contar(hallado.total, pedido);
     resultados.innerHTML = montar(hallado.bloques);
+}
+
+function loQuePiden() {
+    return new URLSearchParams(location.search).get("q") || "";
 }
 
 document.addEventListener("DOMContentLoaded", buscar);
@@ -2299,12 +2435,12 @@ def secciones_del_numero(numero):
     return duenos
 
 
-def fichero_indice(nombre, usados):
-    """Nombre de fichero libre para la página de una sección."""
-    base = sanear_nombre(nombre) or "seccion"
+def fichero_indice(nombre, usados, respaldo):
+    """Nombre de fichero libre, y seguro en una dirección, para una página."""
+    base = nombre_url(nombre) or respaldo
     candidato, orden = base, 2
     while (candidato + ".html").lower() in usados:
-        candidato, orden = "%s (%d)" % (base, orden), orden + 1
+        candidato, orden = "%s-%d" % (base, orden), orden + 1
     usados.add((candidato + ".html").lower())
     return candidato + ".html"
 
@@ -2341,7 +2477,7 @@ def agrupar_secciones(numeros):
     for seccion in secciones:
         seccion["pagina"] = "%s/%s" % (
             CARPETA_SECCIONES,
-            fichero_indice(seccion["nombre"], usados),
+            fichero_indice(seccion["nombre"], usados, "seccion"),
         )
     return secciones
 
@@ -2752,7 +2888,7 @@ def agrupar_autores(numeros, excepciones=(), equivalencias=()):
     for autor in autores:
         autor["pagina"] = "%s/%s" % (
             CARPETA_AUTORES,
-            fichero_indice(autor["nombre"], usados),
+            fichero_indice(autor["nombre"], usados, "autor"),
         )
     return autores
 
@@ -2842,9 +2978,49 @@ def pagina_autor(autores, posicion, opciones, indices=None):
     return envolver_pagina(autor["nombre"], "\n".join(trozos), carpeta)
 
 
-def clave_busqueda(nombre):
-    """Título normalizado, como lo escribe y lo busca buscador.js."""
-    return " ".join(sin_tildes(nombre).lower().split())
+def firma_indice(nombre, firmas, indices):
+    """Apunta una firma en la tabla del índice y devuelve dónde ha quedado."""
+    pagina = ((indices or {}).get("autores") or {}).get(clave_firma(nombre))
+    return firmas.setdefault((nombre, pagina), len(firmas))
+
+
+def datos_articulo(articulo, opciones, firmas, indices):
+    """Lo que necesita el navegador para montar la cita de un artículo.
+
+    Es lo mismo que compone cita_articulo(), pero en piezas: sale a menos de
+    la mitad que mandar la cita ya escrita, y el guion la rehace igual.
+    """
+    quienes = 0  # ni una lista vacía: para el guion sería un autor de mentira
+    if "autor" in articulo:
+        quienes = [
+            firma_indice(nombre, firmas, indices)
+            for nombre in autores_de(articulo, (indices or {}).get("excepciones") or ())
+        ]
+        # si no se pudo separar, va el campo tal cual, como en la cita
+        quienes = quienes or articulo["autor"]
+
+    enlace = articulo.get("link") or 0
+    if enlace and enlace.startswith(URL_ARTICULO):
+        enlace = int(enlace[len(URL_ARTICULO):])  # basta con el id
+
+    inicio = articulo.get("pagina_inicio")
+    paginas = 0 if inicio is None else [inicio, articulo.get("pagina_fin", inicio)]
+
+    local = None if opciones.externa else fichero_local(articulo, opciones)
+    datos = [
+        articulo["nombre"],
+        0,  # el número, que rellena quien llama
+        0,  # y la sección
+        quienes,
+        enlace,
+        paginas,
+        articulo.get("doi", 0),
+        enlace_desde(local, "") if local else 0,
+    ]
+    # los huecos del final no hacen falta: el guion los lee como vacíos
+    while len(datos) > 3 and not datos[-1]:
+        datos.pop()
+    return datos
 
 
 def indice_busqueda(numeros, opciones, indices):
@@ -2852,27 +3028,26 @@ def indice_busqueda(numeros, opciones, indices):
 
     Va como guion y no como JSON porque el sitio también se abre con un doble
     clic, y desde file:// el navegador no deja leer un fichero suelto pero sí
-    cargar un guion. Las citas y los encabezados vienen ya montados, relativos
-    a la raíz, que es donde vive la página de resultados.
+    cargar un guion. Los encabezados, que son pocos, viajan ya montados y
+    relativos a la raíz, que es donde vive la página de resultados; las citas,
+    que son dos mil, viajan en piezas y las monta el guion.
     """
-    encabezados, tandas, articulos = [], {}, []
+    encabezados, tandas, firmas, articulos = [], {}, {}, []
     for volumen, numero in numeros:
         secciones = secciones_del_numero(numero)
         encabezados.append(encabezado_numero(volumen, numero, ""))
         for articulo in articulos_de(numero["articulos"]):
             seccion = secciones.get(id(articulo))
-            articulos.append(
-                [
-                    clave_busqueda(articulo["nombre"]),
-                    len(encabezados) - 1,
-                    tandas.setdefault(seccion, len(tandas)) if seccion else -1,
-                    cita_articulo(articulo, "", opciones, indices),
-                ]
-            )
+            datos = datos_articulo(articulo, opciones, firmas, indices)
+            datos[1] = len(encabezados) - 1
+            datos[2] = tandas.setdefault(seccion, len(tandas)) if seccion else -1
+            articulos.append(datos)
 
     datos = {
+        "externa": bool(opciones.externa),
         "numeros": encabezados,
         "secciones": [encabezado_seccion(nombre, "", 3, indices) for nombre in tandas],
+        "firmas": [[nombre, pagina] for nombre, pagina in firmas],
         "articulos": articulos,
     }
     return "var BUSQUEDA = %s;\n" % json.dumps(

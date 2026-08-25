@@ -60,22 +60,27 @@ El mapeo de un número exige que `sitemap.json` exista ya. Volver a ejecutar
 ## Descarga
 
 Las carpetas se crean al descargar, y sólo las de aquello que se descarga; el
-mapeo no toca el disco más allá de `sitemap.json`. Todas cuelgan de `numeros/`;
-si vienes de una versión anterior, que las dejaba en la raíz, muévelas ahí y el
-programa corregirá solo las rutas que tuviera anotadas. Descargar un número que
-aún no esté mapeado lo mapea antes automáticamente.
+mapeo no toca el disco más allá de `sitemap.json`. Descargar un número que aún
+no esté mapeado lo mapea antes automáticamente.
 
 ```
 numeros/
-  Vol 06 (2003)/
+  vol.06-2003/
     2/                    <- número 2
       Portada.jpg
       Acerca de la portada.pdf
       6 años de La Gaceta (1998-2003).pdf
       ...
-    2 sup/                <- suplemento del número 2
+    2-sup/                <- suplemento del número 2
 sitemap.json
 ```
+
+Las carpetas y las páginas del sitio se nombran con lo más llano del ASCII
+—letras, cifras, puntos, guiones y subrayados—, de modo que ninguna dirección
+necesita escapes y hasta un navegador viejo las abre. Los PDF, que no se
+publican, conservan su título con tildes y espacios. Si el archivo viene de una
+versión anterior, que llamaba a las carpetas `Vol 06 (2003)` y `2 sup`, el
+programa las renombra solo y corrige las rutas anotadas en el mapa.
 
 Cada número puede bajarse de tres formas, según `--formato`:
 
@@ -101,7 +106,7 @@ vuelo. La del ejemplar completo se anota en el número en vez de en un
 artículo, así que con `--formato=ambos` se llevan las dos.
 
 ```jsonc
-"fichero": { "ruta": "numeros/Vol 06 (2003)/2 sup/Anexo 6....pdf",
+"fichero": { "ruta": "numeros/vol.06-2003/2-sup/Anexo 6....pdf",
              "tamaño": 86489, "md5": "cdafbcd00e3aaf648a083d30f00457ce" }
 ```
 
@@ -137,11 +142,11 @@ sin servidor de por medio:
 index.html                        <- portada: la tabla de volúmenes
 estilo.css
 buscar.html                       <- resultados de la búsqueda
-numeros/Vol 29 (2026)/1/          <- una carpeta por número, con su index.html
+numeros/vol.29-2026/1/            <- una carpeta por número, con su index.html
 secciones/index.html              <- índice de secciones
 secciones/Editorial.html          <- una página por sección
 autores/index.html                <- índice de autores
-autores/María Gaspar.html         <- una página por autor
+autores/Maria-Gaspar.html         <- una página por autor
 ```
 
 El sitio se rehace entero cada vez, así que no conviene editarlo a mano. Hace
@@ -289,15 +294,22 @@ más en la raíz:
 
 ```
 buscar.html                       <- la página de resultados, vacía
-busqueda.js                       <- el índice: un título por artículo y su cita
+busqueda.js                       <- el índice: un artículo por entrada
 buscador.js                       <- las cien líneas que buscan y pintan
 ```
 
 El índice va como guion y no como JSON porque el sitio también se abre con un
 doble clic, y desde `file://` el navegador no deja leer un fichero suelto pero
-sí cargar un guion. Ocupa cerca de un mega, que el servidor manda comprimido, y
-sólo lo carga `buscar.html`. Con eso el sitio se basta a sí mismo: no necesita
-el `sitemap.json` ni ningún servidor que sepa nada del archivo.
+sí cargar un guion. Con eso el sitio se basta a sí mismo: no necesita el
+`sitemap.json` ni ningún servidor que sepa nada del archivo.
+
+Cada artículo viaja en piezas —título, autores, páginas, DOI y enlaces— y es
+`buscador.js` quien arma la cita, igual que la arma `gaceta.py` para las
+páginas. Mandarla ya escrita costaba el doble: así el índice se queda en 460 KB
+(260 KB con `--externa`), que el servidor manda comprimidos a 126 y 83 KB. Los
+encabezados de número y de sección, que son ciento veintitrés y no dos mil, sí
+viajan montados. Sólo lo carga `buscar.html`, y buscar lleva unas centésimas de
+segundo.
 
 ### Web para publicar
 
