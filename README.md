@@ -31,6 +31,7 @@ python gaceta.py --descarga --vol 15 --num 1 --formato ambos   # ídem, las dos 
 python gaceta.py --descarga                    # descarga todo (pide confirmación)
 
 python gaceta.py --web                         # genera la web con lo descargado
+python gaceta.py --web --externa                # ídem, enlazando los PDF a la RSME
 ```
 
 | Opción | Descripción |
@@ -48,6 +49,7 @@ python gaceta.py --web                         # genera la web con lo descargado
 | `-c VALOR`, `--cookie=VALOR` | Cookie `PHPSESSID` de una sesión ya abierta |
 | `-d DIR`, `--destino=DIR` | Carpeta raíz del archivo (por defecto, la actual) |
 | `-w`, `--web` | Rehace la web local a partir del mapa y de lo descargado |
+| `-x`, `--externa` | Con `--web`, enlaza los PDF a la RSME en vez de a las copias locales |
 | `-n`, `--simulacion` | Informa de lo que haría, sin escribir nada |
 | `-q`, `--silencioso` | Oculta la información de progreso |
 
@@ -148,7 +150,7 @@ está descargada (y su nombre si no), enlazada a la página del número. Encima,
 una barra de saltos a cada volumen, esta en orden natural.
 
 La página de cada número lleva su título (volumen, año, número y nombre, si lo
-tiene), una barra para recorrer el archivo de número en número (índice,
+tiene), que enlaza a la página que la revista le dedica; una barra para recorrer el archivo de número en número (índice,
 primero, anterior, siguiente y último; los extremos salen apagados) y, a la
 derecha, la portada en grande con el enlace al ejemplar completo —el
 descargado, o el de la revista si no está— y al «Acerca de la portada».
@@ -267,6 +269,15 @@ deduzca, y las firmas que no aparezcan en el archivo se ignoran. Sirve tanto
 para reunir lo que las reglas no ven como para desempatar una firma corta que
 encaja en dos personas distintas: *José Carrillo* podría ser *José Carrillo
 Yáñez* o *José A. Carrillo*, y sin la tabla se quedaría aparte.
+
+### Web para publicar
+
+Con `--externa`, el sitio no enlaza ni un solo PDF del disco: el título de cada
+artículo lleva a su `abrir.php` de la revista (y entonces sobra el remate
+«RSME», que ya no añadiría nada), el número completo a su `abrirentero.php`, y
+el «Acerca de la portada» a su PDF. Las imágenes de portada siguen siendo
+locales, que son ligeras. Así puede publicarse el archivo sin repartir los PDF,
+que además en parte están reservados a los socios.
 
 Al rehacer el sitio se retiran las páginas de `autores/` y de `secciones/`
 que ya no correspondan a nadie, de modo que un cambio de nombre no deja
@@ -389,3 +400,4 @@ sección. Hoy el archivo completo se analiza sin un solo aviso.
 - [x] Web local: página de cada número, con sus secciones y artículos.
 - [x] Web local: índice de secciones, con una página por sección.
 - [x] Web local: índice de autores, con una página por autor.
+- [x] Web local: versión con enlaces externos, para publicar sin los PDF.

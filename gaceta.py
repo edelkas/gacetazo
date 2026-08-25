@@ -1634,8 +1634,8 @@ h4 { font-size: 1rem; margin-top: 1rem; }
 .numeros a:hover { background: #eef; }
 
 h2[id] { scroll-margin-top: 1rem; }
-h2 a, h3 a { color: inherit; text-decoration: none; }
-h2 a:hover, h3 a:hover { text-decoration: underline; }
+h1 a, h2 a, h3 a { color: inherit; text-decoration: none; }
+h1 a:hover, h2 a:hover, h3 a:hover { text-decoration: underline; }
 
 /* --- índice de autores ---------------------------------------------- */
 
@@ -1667,7 +1667,7 @@ PLANTILLA_PAGINA = """<!DOCTYPE html>
 <link rel="stylesheet" href="%(estilo)s">
 </head>
 <body>
-<h1>%(titulo)s</h1>
+<h1>%(cabecera)s</h1>
 %(cuerpo)s
 </body>
 </html>
@@ -1810,6 +1810,23 @@ def fichero_local(entrada, opciones):
     return ficha["ruta"] if os.path.isfile(ruta) else None
 
 
+def destino_revista(entrada, clave="link"):
+    """El PDF que sirve la revista, ya listo para meter en un href."""
+    return escapar_html(entrada[clave]) if entrada.get(clave) else None
+
+
+def destino_articulo(entrada, carpeta, opciones, clave="link"):
+    """A dónde lleva un artículo, ya listo para meter en un href.
+
+    Con --externa se enlaza siempre a la revista, aunque haya copia local: el
+    sitio se publica sin los PDF. Sin ella manda lo que haya en el disco.
+    """
+    if opciones.externa:
+        return destino_revista(entrada, clave)
+    local = fichero_local(entrada, opciones)
+    return enlace_desde(local, carpeta) if local else None
+
+
 def enlace_desde(ruta, carpeta):
     """Enlace a una ruta del archivo desde la página que vive en esa carpeta."""
     return enlace_web(posixpath.relpath(ruta, carpeta))
@@ -1838,9 +1855,9 @@ def enlaces_autores(articulo, carpeta, indices):
 def cita_articulo(articulo, carpeta, opciones, indices=None):
     """Un artículo, formateado como una cita bibliográfica."""
     nombre = "<strong>%s</strong>" % escapar_html(articulo["nombre"])
-    local = fichero_local(articulo, opciones)
-    if local:
-        nombre = '<a href="%s">%s</a>' % (enlace_desde(local, carpeta), nombre)
+    destino = destino_articulo(articulo, carpeta, opciones)
+    if destino:
+        nombre = '<a href="%s">%s</a>' % (destino, nombre)
     partes = [nombre]
 
     if "autor" in articulo:
@@ -1851,7 +1868,8 @@ def cita_articulo(articulo, carpeta, opciones, indices=None):
     if "doi" in articulo:
         url = escapar_html(URL_DOI + articulo["doi"])
         partes.append('<a class="doi" href="%s">%s</a>' % (url, url))
-    if "link" in articulo:
+    # con --externa el nombre ya lleva a la revista, así que sobra el remate
+    if "link" in articulo and not opciones.externa:
         partes.append(
             '<a class="rsme" href="%s">RSME</a>' % escapar_html(articulo["link"])
         )
@@ -1924,10 +1942,18 @@ def titulo_numero(volumen, numero):
     return titulo
 
 
-def envolver_pagina(titulo, cuerpo, carpeta):
-    """Viste un cuerpo de página con la cabecera y el título comunes."""
+def envolver_pagina(titulo, cuerpo, carpeta, destino=None):
+    """Viste un cuerpo de página con la cabecera y el título comunes.
+
+    Con 'destino' el titular se enlaza ahí; el nombre de la pestaña se queda
+    en texto llano, que no admite otra cosa.
+    """
+    cabecera = escapar_html(titulo)
+    if destino:
+        cabecera = '<a href="%s">%s</a>' % (destino, cabecera)
     return PLANTILLA_PAGINA % {
         "titulo": escapar_html(titulo),
+        "cabecera": cabecera,
         "estilo": enlace_desde(NOMBRE_ESTILO, carpeta),
         "cuerpo": cuerpo,
     }
@@ -1990,25 +2016,22 @@ def columna_portada(volumen, numero, carpeta, opciones):
         )
 
     # el ejemplar completo: el que haya en el disco, y si no el de la revista
-    entero = fichero_local(numero, opciones)
+    entero = destino_articulo(numero, carpeta, opciones, "link_todo")
+    rotulo = "Número completo"
+    if not entero:
+        # aquí sólo se llega sin --externa: se avisa de que el enlace se va fuera
+        entero = destino_revista(numero, "link_todo")
+        rotulo += " (RSME)"
     if entero:
-        trozos.append(
-            '<p><a href="%s">Número completo</a></p>' % enlace_desde(entero, carpeta)
-        )
-    elif numero.get("link_todo"):
-        trozos.append(
-            '<p><a href="%s">Número completo (RSME)</a></p>'
-            % escapar_html(numero["link_todo"])
-        )
+        trozos.append('<p><a href="%s">%s</a></p>' % (entero, rotulo))
 
     prefacio = articulo_portada(numero)
     if prefacio:
-        local = fichero_local(prefacio, opciones)
-        destino = enlace_desde(local, carpeta) if local else prefacio.get("link")
+        destino = destino_articulo(prefacio, carpeta, opciones) or destino_revista(
+            prefacio
+        )
         if destino:
-            trozos.append(
-                '<p><a href="%s">%s</a></p>' % (escapar_html(destino), TITULO_PORTADA)
-            )
+            trozos.append('<p><a href="%s">%s</a></p>' % (destino, TITULO_PORTADA))
 
     return '<aside class="portada">\n%s\n</aside>' % "\n".join(trozos)
 
@@ -2035,7 +2058,10 @@ def pagina_numero(numeros, posicion, opciones, indices=None):
         "\n".join(articulos),
         columna_portada(volumen, numero, carpeta, opciones),
     )
-    return envolver_pagina(titulo_numero(volumen, numero), cuerpo, carpeta)
+    # el titular lleva a la página que la revista dedica al número
+    return envolver_pagina(
+        titulo_numero(volumen, numero), cuerpo, carpeta, destino_revista(numero)
+    )
 
 
 def clave_indice(nombre):
@@ -2844,6 +2870,12 @@ def principal(argumentos):
         help="genera el sitio web que sirve el archivo ya descargado",
     )
     analizador.add_option(
+        "-x", "--externa",
+        action="store_true", default=False,
+        help="con --web, enlaza los PDF a la revista en vez de a las copias "
+             "locales, para poder publicar el sitio sin ellas",
+    )
+    analizador.add_option(
         "-s", "--sup",
         action="store_true", default=False,
         help="actúa sobre el suplemento de ese número, no sobre el número",
@@ -2914,6 +2946,9 @@ def principal(argumentos):
         opciones.formato = elegido
     else:
         opciones.formato = FORMATO_ARTICULO
+
+    if opciones.externa and not opciones.web:
+        analizador.error("--externa sólo tiene sentido junto a --web")
 
     if opciones.web:
         if opciones.mapa or opciones.descarga:
