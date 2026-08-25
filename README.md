@@ -32,6 +32,7 @@ python gaceta.py --descarga                    # descarga todo (pide confirmaci�
 
 python gaceta.py --web                         # genera la web con lo descargado
 python gaceta.py --web --externa               # ídem, enlazando los PDF a la RSME
+python gaceta.py --web --publicar ../gaceta-web # el sitio que se cuelga, aparte
 ```
 
 | Opción | Descripción |
@@ -50,6 +51,7 @@ python gaceta.py --web --externa               # ídem, enlazando los PDF a la R
 | `-d DIR`, `--destino=DIR` | Carpeta raíz del archivo (por defecto, la actual) |
 | `-w`, `--web` | Rehace la web local a partir del mapa y de lo descargado |
 | `-x`, `--externa` | Con `--web`, enlaza los PDF a la RSME en vez de a las copias locales |
+| `-P DIR`, `--publicar=DIR` | Con `--web`, escribe el sitio en `DIR` (con las portadas, sin los PDF) |
 | `-n`, `--simulacion` | Informa de lo que haría, sin escribir nada |
 | `-q`, `--silencioso` | Oculta la información de progreso |
 
@@ -320,15 +322,70 @@ el «Acerca de la portada» a su PDF. Las imágenes de portada siguen siendo
 locales, que son ligeras. Así puede publicarse el archivo sin repartir los PDF,
 que además en parte están reservados a los socios.
 
-Eso es justo lo que deja pasar el `.gitignore`: fuera los PDF, el
-`config.json` y el `sitemap.json`; dentro las páginas, las portadas, el estilo
-y los dos guiones del buscador. Un `git add .` sobre el sitio recién generado
-deja el repositorio listo para GitHub Pages.
+`--publicar DIR` da un paso más: en vez de dejar el sitio dentro del archivo,
+lo escribe entero en otra carpeta, copiando allí las portadas y nada más. Da
+por supuesto `--externa`, así que en esa carpeta no hay ni un PDF que enseñar
+por descuido: es el archivo listo para colgar, unos 7 MB. También deja un
+`.nojekyll`, para que GitHub sirva los ficheros tal cual sin pasarlos por
+Jekyll.
 
 Al rehacer el sitio se retiran las páginas de `autores/` y de `secciones/`
 que ya no correspondan a nadie, de modo que un cambio de nombre no deja
 páginas sueltas. Sólo se borran ficheros `.html` de esas dos carpetas: lo
 descargado no se toca.
+
+## Publicar en GitHub Pages
+
+El repositorio guarda dos cosas que no tienen nada que ver, así que van en dos
+ramas: `master` lleva sólo el código (`gaceta.py`, este README y el
+`.gitignore`), y `gh-pages` lleva sólo la web, sin historia común con la otra.
+Cada rama vive en su propia carpeta, para no tener que cambiar de rama nunca:
+
+```
+programs/gaceta/       <- master: el código, el archivo descargado y el mapa
+programs/gaceta-web/   <- gh-pages: sólo el sitio que se cuelga
+```
+
+### Cada vez que se quiera actualizar lo publicado
+
+```
+cd programs/gaceta
+python gaceta.py --mapa                          # si hay número nuevo
+python gaceta.py --descarga                      # si se quiere bajar
+python gaceta.py --web --publicar ../gaceta-web  # rehace el sitio publicable
+
+cd ../gaceta-web
+git add -A
+git commit -m "web al día"
+git push
+```
+
+`git add -A` recoge lo nuevo y lo que haya dejado de existir. Si nada ha
+cambiado, `git commit` avisa de que no hay nada que confirmar y no se crea un
+commit vacío: rehacer el sitio dos veces seguidas da los mismos ficheros.
+
+Conviene mirar el `git status` antes de confirmar: ahí no debe aparecer nunca
+un `.pdf`, ni `sitemap.json`, ni `config.json`. Con `--publicar` no pueden
+llegar, porque no se copian.
+
+### Cómo se preparó todo esto (no hace falta repetirlo)
+
+```
+git worktree add --detach ../gaceta-web     # una carpeta más, del mismo repo
+git -C ../gaceta-web checkout --orphan gh-pages   # rama sin historia común
+git -C ../gaceta-web rm -rf .               # que empieza vacía
+python gaceta.py --web --publicar ../gaceta-web
+git -C ../gaceta-web add -A
+git -C ../gaceta-web commit -m "web del archivo de La Gaceta"
+```
+
+La primera vez hay que subir la rama con `git push -u origin gh-pages`, y
+luego, en GitHub, *Settings → Pages → Source: Deploy from a branch*, eligiendo
+`gh-pages` y `/ (root)`. La web queda en
+`https://edelkas.github.io/rsme/`.
+
+Para deshacerlo todo: `git worktree remove ../gaceta-web` y
+`git branch -D gh-pages`.
 
 ## Material reservado a los socios
 
@@ -461,3 +518,4 @@ sección. Hoy el archivo completo se analiza sin un solo aviso.
 - [x] Web local: índice de autores, con una página por autor.
 - [x] Web local: versión con enlaces externos, para publicar sin los PDF.
 - [x] Web local: búsqueda de artículos por título, en el navegador.
+- [x] Publicación en GitHub Pages desde una rama aparte.

@@ -1,10 +1,17 @@
 # lo personal: la cookie de sesión y las tablas propias
 config.json
 
-# el mapa del archivo, que la web ya no necesita
+# el archivo descargado y el mapa que lo describe
 sitemap.json
+numeros/
 
-# los PDF pesan, y parte del archivo es sólo para socios
-numeros/**/*.pdf
+# la web que --web deja aquí; la que se publica se genera con --publicar
+index.html
+buscar.html
+estilo.css
+busqueda.js
+buscador.js
+autores/
+secciones/
 
 __pycache__/

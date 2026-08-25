@@ -36,6 +36,8 @@ NOMBRE_CONFIG = "config.json"
 # ficheros del sitio que se genera con --web
 NOMBRE_PAGINA = "index.html"
 NOMBRE_ESTILO = "estilo.css"
+# GitHub Pages pasa por Jekyll lo que se le cuelga, salvo si encuentra esto
+NOMBRE_NOJEKYLL = ".nojekyll"
 NOMBRE_BUSQUEDA = "buscar.html"
 NOMBRE_INDICE = "busqueda.js"
 NOMBRE_BUSCADOR = "buscador.js"
@@ -3069,9 +3071,18 @@ def pagina_busqueda(opciones):
     return envolver_pagina("Búsqueda", cuerpo, "")
 
 
+def ruta_del_sitio(nombre, opciones):
+    """Dónde cae en el disco un fichero del sitio, dada su ruta desde la raíz.
+
+    El sitio se escribe dentro del archivo, salvo con --publicar, que lo manda
+    a otra carpeta para poder colgarlo sin los PDF.
+    """
+    return os.path.join(opciones.sitio, nombre.replace("/", os.sep))
+
+
 def escribir_web(nombre, contenido, opciones, callado=False):
     """Escribe uno de los ficheros del sitio, dada su ruta desde la raíz."""
-    ruta = os.path.join(opciones.destino, nombre.replace("/", os.sep))
+    ruta = ruta_del_sitio(nombre, opciones)
     if opciones.simulacion:
         if not callado:
             informar(opciones, "  se escribiría %s" % ruta)
@@ -3093,14 +3104,14 @@ def limpiar_sobras(carpetas, escritos, opciones):
     quedan = {nombre.lower() for nombre in escritos}
     sobras = 0
     for carpeta in carpetas:
-        raiz = os.path.join(opciones.destino, carpeta)
+        raiz = ruta_del_sitio(carpeta, opciones)
         if not os.path.isdir(raiz):
             continue
         for nombre in sorted(os.listdir(raiz)):
             camino = os.path.join(raiz, nombre)
             if not nombre.lower().endswith(".html") or not os.path.isfile(camino):
                 continue
-            if ruta_relativa(camino, opciones).lower() in quedan:
+            if ("%s/%s" % (carpeta, nombre)).lower() in quedan:
                 continue
             informar(
                 opciones,
@@ -3111,6 +3122,17 @@ def limpiar_sobras(carpetas, escritos, opciones):
                 os.remove(camino)
             sobras += 1
     return sobras
+
+
+def copiar_portada(volumen, numero, opciones):
+    """Lleva al sitio la portada de un número, si la hay y no está ya allí."""
+    portada = portada_descargada(volumen, numero, opciones)
+    if portada is None:
+        return False
+    destino = ruta_del_sitio(portada, opciones)
+    if not opciones.simulacion:
+        shutil.copyfile(os.path.join(opciones.destino, portada), destino)
+    return True
 
 
 def sin_mapear(mapa):
@@ -3145,8 +3167,11 @@ def generar_web(opciones):
             % (cuantos, rotulo_volumen(volumen), rotulo_numero(numero))
         )
 
+    asegurar_carpeta(opciones.sitio, opciones)
     escribir_web(NOMBRE_PAGINA, pagina_indice(mapa, opciones), opciones)
     escribir_web(NOMBRE_ESTILO, ESTILO, opciones)
+    if opciones.publicar:
+        escribir_web(NOMBRE_NOJEKYLL, "", opciones)
 
     numeros = [
         (volumen, numero)
@@ -3170,18 +3195,30 @@ def generar_web(opciones):
         "excepciones": excepciones,
     }
 
+    portadas = 0
     for posicion, (volumen, numero) in enumerate(numeros):
         # la carpeta falta si ese número no se llegó a descargar
-        asegurar_carpeta(ruta_carpeta_numero(volumen, numero, opciones), opciones)
+        pagina = ruta_pagina_numero(volumen, numero)
+        asegurar_carpeta(
+            ruta_del_sitio(posixpath.dirname(pagina), opciones), opciones
+        )
         escribir_web(
-            ruta_pagina_numero(volumen, numero),
+            pagina,
             pagina_numero(numeros, posicion, opciones, indices),
             opciones,
             callado=True,
         )
+        if opciones.publicar:
+            portadas += copiar_portada(volumen, numero, opciones)
     informar(opciones, "  %d páginas de número" % len(numeros))
+    if opciones.publicar:
+        informar(
+            opciones,
+            "  %d portadas %s"
+            % (portadas, "por copiar" if opciones.simulacion else "copiadas"),
+        )
 
-    asegurar_carpeta(os.path.join(opciones.destino, CARPETA_SECCIONES), opciones)
+    asegurar_carpeta(ruta_del_sitio(CARPETA_SECCIONES, opciones), opciones)
     escribir_web(RUTA_SECCIONES, pagina_secciones(secciones, opciones), opciones)
     for posicion, seccion in enumerate(secciones):
         escribir_web(
@@ -3192,7 +3229,7 @@ def generar_web(opciones):
         )
     informar(opciones, "  %d páginas de sección" % len(secciones))
 
-    asegurar_carpeta(os.path.join(opciones.destino, CARPETA_AUTORES), opciones)
+    asegurar_carpeta(ruta_del_sitio(CARPETA_AUTORES, opciones), opciones)
     escribir_web(RUTA_AUTORES, pagina_autores(autores, opciones), opciones)
     for posicion, autor in enumerate(autores):
         escribir_web(
@@ -3217,21 +3254,16 @@ def generar_web(opciones):
     if sobras:
         informar(opciones, "  %d páginas obsoletas de más" % sobras)
 
-    portadas = sum(
-        1
-        for volumen, numero in numeros
-        if portada_descargada(volumen, numero, opciones)
-    )
     informar(
         opciones,
-        "Sitio generado: %d volúmenes, %d números, %d secciones, %d autores, "
-        "%d portadas."
+        "Sitio generado en %s: %d volúmenes, %d números, %d secciones y "
+        "%d autores."
         % (
+            opciones.sitio,
             len(mapa["volumenes"]),
             len(numeros),
             len(secciones),
             len(autores),
-            portadas,
         ),
     )
     if opciones.simulacion:
@@ -3294,6 +3326,12 @@ def principal(argumentos):
         "-w", "--web",
         action="store_true", default=False,
         help="genera el sitio web que sirve el archivo ya descargado",
+    )
+    analizador.add_option(
+        "-P", "--publicar",
+        metavar="DIR",
+        help="con --web, escribe el sitio en esa carpeta en vez de dentro del "
+             "archivo, con las portadas pero sin los PDF, listo para colgarlo",
     )
     analizador.add_option(
         "-x", "--externa",
@@ -3377,6 +3415,15 @@ def principal(argumentos):
 
     if opciones.externa and not opciones.web:
         analizador.error("--externa sólo tiene sentido junto a --web")
+
+    if opciones.publicar is not None and not opciones.web:
+        analizador.error("--publicar sólo tiene sentido junto a --web")
+
+    # el sitio se escribe dentro del archivo mientras no se diga otra cosa; lo
+    # que se publica no lleva PDF, así que enlaza a la revista
+    opciones.sitio = opciones.publicar or opciones.destino
+    if opciones.publicar:
+        opciones.externa = True
 
     if opciones.web:
         if opciones.mapa or opciones.descarga:
