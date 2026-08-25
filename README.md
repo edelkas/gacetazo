@@ -194,7 +194,9 @@ nombre enlaza a su página.
 El índice va por orden alfabético, con un encabezado por letra y una barra de
 la A a la Z (las letras que nadie estrena salen apagadas). Cada autor se
 resume como en las secciones, y su página lista sus artículos del más reciente
-al más antiguo.
+al más antiguo, agrupados por número (un `<h2>` que enlaza a su página, como en
+las páginas de sección) y, dentro de cada número, por sección (un `<h3>` que
+enlaza a la suya, como en las páginas de número).
 
 Hay nombres que llevan dentro una coma o una conjunción y que la separación
 partiría donde no debe: un apellido con `y` (José Echegaray y Eizaguirre), una

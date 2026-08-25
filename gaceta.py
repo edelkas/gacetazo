@@ -1634,8 +1634,8 @@ h4 { font-size: 1rem; margin-top: 1rem; }
 .numeros a:hover { background: #eef; }
 
 h2[id] { scroll-margin-top: 1rem; }
-h2 a { color: inherit; text-decoration: none; }
-h2 a:hover { text-decoration: underline; }
+h2 a, h3 a { color: inherit; text-decoration: none; }
+h2 a:hover, h3 a:hover { text-decoration: underline; }
 
 /* --- índice de autores ---------------------------------------------- */
 
@@ -1858,6 +1858,28 @@ def cita_articulo(articulo, carpeta, opciones, indices=None):
     return '<p class="cita">%s</p>' % ", ".join(partes)
 
 
+def encabezado_numero(volumen, numero, carpeta, nivel=2, ancla=None):
+    """Encabezado que abre el bloque de un número, enlazado a su página."""
+    etiqueta = "h%d" % nivel
+    return '<%s%s><a href="%s">%s</a></%s>' % (
+        etiqueta,
+        ' id="%s"' % ancla if ancla else "",
+        enlace_desde(ruta_pagina_numero(volumen, numero), carpeta),
+        escapar_html(titulo_numero(volumen, numero)),
+        etiqueta,
+    )
+
+
+def encabezado_seccion(nombre, carpeta, nivel=2, indices=None):
+    """Encabezado de una sección de primer nivel, enlazado a su página."""
+    etiqueta = "h%d" % nivel
+    rotulo = escapar_html(nombre)
+    pagina = ((indices or {}).get("secciones") or {}).get(clave_indice(nombre))
+    if pagina:
+        rotulo = '<a href="%s">%s</a>' % (enlace_desde(pagina, carpeta), rotulo)
+    return "<%s>%s</%s>" % (etiqueta, rotulo, etiqueta)
+
+
 def arbol_web(entradas, carpeta, opciones, nivel=2, omitir=None, indices=None):
     """Vuelca el árbol de secciones y artículos, con un encabezado por nivel.
 
@@ -1867,17 +1889,15 @@ def arbol_web(entradas, carpeta, opciones, nivel=2, omitir=None, indices=None):
     trozos = []
     for entrada in entradas:
         if "articulos" in entrada:
-            etiqueta = "h%d" % min(nivel, 6)
-            rotulo = escapar_html(entrada["nombre"])
             # sólo las secciones de primer nivel tienen página propia
-            pagina = None
             if nivel == 2:
-                pagina = ((indices or {}).get("secciones") or {}).get(
-                    clave_indice(entrada["nombre"])
+                trozos.append(encabezado_seccion(entrada["nombre"], carpeta, 2, indices))
+            else:
+                etiqueta = "h%d" % min(nivel, 6)
+                trozos.append(
+                    "<%s>%s</%s>"
+                    % (etiqueta, escapar_html(entrada["nombre"]), etiqueta)
                 )
-            if pagina:
-                rotulo = '<a href="%s">%s</a>' % (enlace_desde(pagina, carpeta), rotulo)
-            trozos.append("<%s>%s</%s>" % (etiqueta, rotulo, etiqueta))
             trozos.extend(
                 arbol_web(
                     entrada["articulos"], carpeta, opciones, nivel + 1, indices=indices
@@ -2051,6 +2071,15 @@ def tandas_del_numero(numero):
             yield TITULO_PORTADA, [entrada]
 
 
+def secciones_del_numero(numero):
+    """De qué sección de primer nivel cuelga cada artículo del número."""
+    duenos = {}
+    for nombre, articulos in tandas_del_numero(numero):
+        for articulo in articulos:
+            duenos.setdefault(id(articulo), nombre)
+    return duenos
+
+
 def fichero_indice(nombre, usados):
     """Nombre de fichero libre para la página de una sección."""
     base = sanear_nombre(nombre) or "seccion"
@@ -2172,11 +2201,8 @@ def pagina_seccion(secciones, posicion, opciones, indices=None):
     trozos = [navegacion, barra_tandas(tandas, carpeta)]
     for volumen, numero, articulos in tandas:
         trozos.append(
-            '<h2 id="%s"><a href="%s">%s</a></h2>'
-            % (
-                ancla_tanda(volumen, numero),
-                enlace_desde(ruta_pagina_numero(volumen, numero), carpeta),
-                escapar_html(titulo_numero(volumen, numero)),
+            encabezado_numero(
+                volumen, numero, carpeta, ancla=ancla_tanda(volumen, numero)
             )
         )
         trozos.extend(
@@ -2465,30 +2491,32 @@ def agrupar_autores(numeros, excepciones=(), equivalencias=()):
     apariciones = []
     firmas = Counter()
     for volumen, numero in numeros:
+        secciones = secciones_del_numero(numero)
         for articulo in articulos_de(numero["articulos"]):
             nombres = autores_de(articulo, excepciones)
             for nombre in nombres:
                 firmas[nombre] += 1
             if nombres:
-                apariciones.append((volumen, numero, articulo, nombres))
+                seccion = secciones.get(id(articulo))
+                apariciones.append((volumen, numero, seccion, articulo, nombres))
 
     de_quien = mismas_personas(
         {clave_firma(nombre) for nombre in firmas}, equivalencias
     )
 
     grupos = {}
-    for volumen, numero, articulo, nombres in apariciones:
+    for volumen, numero, seccion, articulo, nombres in apariciones:
         # dict.fromkeys quita repetidos sin descolocar el orden, por si el
         # mismo autor apareciera dos veces firmando distinto
         for clave in dict.fromkeys(de_quien[clave_firma(n)] for n in nombres):
             grupo = grupos.setdefault(clave, {"firmas": Counter(), "apariciones": []})
-            grupo["apariciones"].append((volumen, numero, articulo))
+            grupo["apariciones"].append((volumen, numero, seccion, articulo))
     for nombre, veces in firmas.items():
         grupos[de_quien[clave_firma(nombre)]]["firmas"][nombre] += veces
 
     autores = []
     for grupo in grupos.values():
-        años = [volumen["año"] for volumen, _, _ in grupo["apariciones"]]
+        años = [volumen["año"] for volumen, _, _, _ in grupo["apariciones"]]
         autores.append(
             {
                 "nombre": nombre_canonico(grupo["firmas"]),
@@ -2547,6 +2575,25 @@ def pagina_autores(autores, opciones):
     return envolver_pagina("Autores", "\n".join(trozos), carpeta)
 
 
+def tandas_del_autor(autor):
+    """Los artículos del autor, por número (del más nuevo al más viejo).
+
+    Dentro de cada número se respeta el orden del sitemap, igual que en las
+    páginas de sección, agrupando los artículos por la sección de la que
+    cuelgan.
+    """
+    bloques = []
+    for volumen, numero, seccion, articulo in autor["apariciones"]:
+        if not bloques or bloques[-1][1] is not numero:
+            bloques.append((volumen, numero, []))
+        tandas = bloques[-1][2]
+        if not tandas or tandas[-1][0] != seccion:
+            tandas.append((seccion, []))
+        tandas[-1][1].append(articulo)
+    bloques.reverse()
+    return bloques
+
+
 def pagina_autor(autores, posicion, opciones, indices=None):
     """La página de un autor: sus artículos, del más reciente al más antiguo."""
     autor = autores[posicion]
@@ -2564,8 +2611,15 @@ def pagina_autor(autores, posicion, opciones, indices=None):
         boton_web("Último »", salto(len(autores) - 1)),
     ]
     trozos = [barra_navegacion(botones), linea_firmas(autor)]
-    for _, _, articulo in reversed(autor["apariciones"]):
-        trozos.append(cita_articulo(articulo, carpeta, opciones, indices))
+    for volumen, numero, tandas in tandas_del_autor(autor):
+        trozos.append(encabezado_numero(volumen, numero, carpeta))
+        for seccion, articulos in tandas:
+            if seccion is not None:
+                trozos.append(encabezado_seccion(seccion, carpeta, 3, indices))
+            trozos.extend(
+                cita_articulo(articulo, carpeta, opciones, indices)
+                for articulo in articulos
+            )
     return envolver_pagina(autor["nombre"], "\n".join(trozos), carpeta)
 
 
