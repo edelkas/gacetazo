@@ -8,6 +8,7 @@ numeros/
 # la web que --web deja aquí; la que se publica se genera con --publicar
 index.html
 buscar.html
+buscar-autores.html
 estilo.css
 busqueda.js
 buscador.js

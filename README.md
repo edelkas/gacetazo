@@ -144,6 +144,7 @@ sin servidor de por medio:
 index.html                        <- portada: la tabla de volúmenes
 estilo.css
 buscar.html                       <- resultados de la búsqueda
+buscar-autores.html               <- y los de la búsqueda de autores
 numeros/vol.29-2026/1/            <- una carpeta por número, con su index.html
 secciones/index.html              <- índice de secciones
 secciones/Editorial.html          <- una página por sección
@@ -294,14 +295,25 @@ los espacios y cada trozo ha de aparecer en el título, en cualquier orden y sin
 tener que estar entero: *«mat oli»* encuentra *«Olimpiada Matemática
 Española»*.
 
-El sitio es estático, así que el trabajo lo hace el navegador con dos ficheros
-más en la raíz:
+En el índice de autores el buscador es el de autores, que busca por el nombre y
+lleva a `buscar-autores.html`. Funciona igual —varios términos, sin distinguir
+mayúsculas ni tildes— y los resultados salen por orden alfabético y agrupados
+por letras, como el propio índice: *«gar lop»* encuentra a *Jesús García López
+de Lacalle*, y *«canada»* a *A. Cañada*.
+
+El sitio es estático, así que el trabajo lo hace el navegador con estos
+ficheros de la raíz:
 
 ```
 buscar.html                       <- la página de resultados, vacía
-busqueda.js                       <- el índice: un artículo por entrada
+buscar-autores.html               <- la de los autores, también vacía
+busqueda.js                       <- el índice: una entrada por artículo y autor
 buscador.js                       <- las cien líneas que buscan y pintan
 ```
+
+Las dos páginas de resultados son la misma salvo por un `data-busca` que dice
+qué se busca en ella, y el guion, que es uno solo, lo lee para saber en qué
+tabla mirar y cómo pintar lo hallado.
 
 El índice va como guion y no como JSON porque el sitio también se abre con un
 doble clic, y desde `file://` el navegador no deja leer un fichero suelto pero
@@ -310,8 +322,8 @@ sí cargar un guion. Con eso el sitio se basta a sí mismo: no necesita el
 
 Cada artículo viaja en piezas —título, autores, páginas, DOI y enlaces— y es
 `buscador.js` quien arma la cita, igual que la arma `gaceta.py` para las
-páginas. Mandarla ya escrita costaba el doble: así el índice se queda en 460 KB
-(260 KB con `--externa`), que el servidor manda comprimidos a 126 y 83 KB. Los
+páginas. Mandarla ya escrita costaba el doble: así el índice se queda en 535 KB
+(334 KB con `--externa`), que el servidor manda comprimidos a 147 y 104 KB. Los
 encabezados de número y de sección, que son ciento veintitrés y no dos mil, sí
 viajan montados. Sólo lo carga `buscar.html`, y buscar lleva unas centésimas de
 segundo.
@@ -520,6 +532,6 @@ sección. Hoy el archivo completo se analiza sin un solo aviso.
 - [x] Web local: índice de secciones, con una página por sección.
 - [x] Web local: índice de autores, con una página por autor.
 - [x] Web local: versión con enlaces externos, para publicar sin los PDF.
-- [x] Web local: búsqueda de artículos por título, en el navegador, con
-      varios términos a la vez.
+- [x] Web local: búsqueda de artículos por título y de autores por nombre, en
+      el navegador, con varios términos a la vez.
 - [x] Publicación en GitHub Pages desde una rama aparte.

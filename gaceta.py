@@ -39,6 +39,7 @@ NOMBRE_ESTILO = "estilo.css"
 # GitHub Pages pasa por Jekyll lo que se le cuelga, salvo si encuentra esto
 NOMBRE_NOJEKYLL = ".nojekyll"
 NOMBRE_BUSQUEDA = "buscar.html"
+NOMBRE_BUSQUEDA_AUTORES = "buscar-autores.html"
 NOMBRE_INDICE = "busqueda.js"
 NOMBRE_BUSCADOR = "buscador.js"
 # el nombre con que el formulario manda lo que se busca, y que lee buscador.js
@@ -1819,8 +1820,8 @@ BUSCADOR = r"""/* Generado por gaceta.py; los cambios a mano se pierden al rehac
 var URL_ARTICULO = "https://gaceta.rsme.es/abrir.php?id=";
 var URL_DOI = "https://www.doi.org/";
 
-/* Las claves por las que se busca: los títulos, normalizados una sola vez. */
-var CLAVES = null;
+/* Las claves por las que se busca, normalizadas una sola vez por tabla. */
+var CLAVES = {};
 
 function normalizar(texto) {
     /* sin tildes y en minúsculas, como se normaliza también al generar */
@@ -1841,13 +1842,14 @@ function casan(clave, buscados) {
     return true;
 }
 
-function claves() {
-    if (CLAVES === null) {
-        CLAVES = BUSQUEDA.articulos.map(function (articulo) {
-            return normalizar(articulo[0]);
+function claves(cual) {
+    /* el nombre va el primero tanto en un artículo como en un autor */
+    if (!CLAVES[cual]) {
+        CLAVES[cual] = BUSQUEDA[cual].map(function (entrada) {
+            return normalizar(entrada[0]);
         });
     }
-    return CLAVES;
+    return CLAVES[cual];
 }
 
 function escapar(texto) {
@@ -1912,7 +1914,7 @@ function agrupar(buscados) {
     /* Los artículos vienen en el orden del archivo, así que se agrupan según
        van saliendo y al final se les da la vuelta a los números; dentro de
        cada uno se leen como en su página, del primero al último. */
-    var bloques = [], bloque = null, total = 0, todas = claves();
+    var bloques = [], bloque = null, total = 0, todas = claves("articulos");
     for (var i = 0; i < BUSQUEDA.articulos.length; i++) {
         if (!casan(todas[i], buscados)) { continue; }
         var articulo = BUSQUEDA.articulos[i];
@@ -1947,18 +1949,66 @@ function montar(bloques) {
     return trozos.join("\n");
 }
 
-function contar(total, pedidos) {
+function hallarArticulos(buscados) {
+    var hallado = agrupar(buscados);
+    return { total: hallado.total, html: montar(hallado.bloques) };
+}
+
+function inicial(nombre) {
+    /* la letra bajo la que se archiva, como en el índice de autores */
+    var letra = normalizar(nombre.slice(0, 1)).toUpperCase();
+    return letra >= "A" && letra <= "Z" ? letra : "#";
+}
+
+function lineaAutor(autor) {
+    /* [nombre, página, artículos, desde, hasta] */
+    var cuantos = autor[2] === 1 ? "1 artículo" : autor[2] + " artículos";
+    var hasta = autor.length > 4 ? autor[4] : autor[3];
+    var años = autor[3] === hasta ? autor[3] : autor[3] + "-" + hasta;
+    return '<p class="linea">' + enlace(escapar(autor[1]), escapar(autor[0]))
+        + " (" + cuantos + ", " + años + ")</p>";
+}
+
+function hallarAutores(buscados) {
+    /* vienen ya ordenados y se pintan como en su índice, por letras */
+    var trozos = [], letra = null, total = 0, todas = claves("autores");
+    for (var i = 0; i < BUSQUEDA.autores.length; i++) {
+        if (!casan(todas[i], buscados)) { continue; }
+        var autor = BUSQUEDA.autores[i];
+        total++;
+        if (inicial(autor[0]) !== letra) {
+            letra = inicial(autor[0]);
+            trozos.push("<h2>" + escapar(letra) + "</h2>");
+        }
+        trozos.push(lineaAutor(autor));
+    }
+    return { total: total, html: trozos.join("\n") };
+}
+
+/* Qué se busca en cada página de resultados, que ella misma dice cuál es. */
+var MODOS = {
+    articulos: { uno: "artículo", varios: "artículos", en: "en el título",
+                 hallar: hallarArticulos },
+    autores: { uno: "autor", varios: "autores", en: "en el nombre",
+               hallar: hallarAutores }
+};
+
+function modoDe(resultados) {
+    return MODOS[resultados.getAttribute("data-busca")] || MODOS.articulos;
+}
+
+function contar(total, pedidos, modo) {
     /* el verbo concuerda con los artículos, no con los términos */
     var cuales = enumerar(pedidos.map(function (pedido) {
         return "«" + pedido + "»";
     }));
     if (total === 0) {
-        return "Ningún artículo lleva " + cuales + " en el título.";
+        return "Ningún " + modo.uno + " lleva " + cuales + " " + modo.en + ".";
     }
     if (total === 1) {
-        return "Un artículo lleva " + cuales + " en el título.";
+        return "Un " + modo.uno + " lleva " + cuales + " " + modo.en + ".";
     }
-    return total + " artículos llevan " + cuales + " en el título.";
+    return total + " " + modo.varios + " llevan " + cuales + " " + modo.en + ".";
 }
 
 function buscar() {
@@ -1968,20 +2018,22 @@ function buscar() {
 
     var cuenta = document.getElementById("cuenta");
     var resultados = document.getElementById("resultados");
+    var modo = modoDe(resultados);
     if (!pedido) {
-        cuenta.textContent = "Escribe en el buscador una o varias palabras"
-            + " del título.";
+        cuenta.textContent = "Escribe una o varias palabras que aparezcan "
+            + modo.en + ".";
         resultados.innerHTML = "";
         return;
     }
 
-    document.title = pedido + " - Búsqueda - La Gaceta de la RSME";
+    /* el título de la pestaña ya dice qué se busca aquí */
+    document.title = pedido + " - " + document.title;
     var pedidos = terminos(pedido);
-    var hallado = agrupar(pedidos.map(function (suelto) {
+    var hallado = modo.hallar(pedidos.map(function (suelto) {
         return normalizar(suelto);
     }));
-    cuenta.textContent = contar(hallado.total, pedidos);
-    resultados.innerHTML = montar(hallado.bloques);
+    cuenta.textContent = contar(hallado.total, pedidos, modo);
+    resultados.innerHTML = hallado.html;
 }
 
 function loQuePiden() {
@@ -2293,18 +2345,24 @@ def envolver_pagina(titulo, cuerpo, carpeta, destino=None):
     }
 
 
-def formulario_busqueda(carpeta):
-    """El buscador, que acompaña a la barra de navegación de cada página."""
+def formulario_busqueda(carpeta, autores=False):
+    """El buscador, que acompaña a la barra de navegación de cada página.
+
+    Busca por título salvo donde se anden mirando autores, que allí lo suyo
+    es buscarlos por el nombre.
+    """
+    pagina, rotulo = NOMBRE_BUSQUEDA, "Buscar por título"
+    if autores:
+        pagina, rotulo = NOMBRE_BUSQUEDA_AUTORES, "Buscar por autor"
     return (
         '<form class="buscar" action="%s" method="get" role="search">'
-        '<input type="search" name="%s" placeholder="Buscar por título" '
-        'aria-label="Buscar por título">'
+        '<input type="search" name="%s" placeholder="%s" aria-label="%s">'
         "<button>Buscar</button>"
         "</form>"
-    ) % (enlace_desde(NOMBRE_BUSQUEDA, carpeta), PARAMETRO_BUSQUEDA)
+    ) % (enlace_desde(pagina, carpeta), PARAMETRO_BUSQUEDA, rotulo, rotulo)
 
 
-def barra_navegacion(botones, carpeta):
+def barra_navegacion(botones, carpeta, autores=False):
     """Envuelve una tanda de botones y el buscador en su barra.
 
     Va en un <div> y no en un <p> porque un formulario no cabe dentro de un
@@ -2312,7 +2370,7 @@ def barra_navegacion(botones, carpeta):
     acabaría en la línea de abajo.
     """
     return '<div class="navegacion">%s</div>' % "\n".join(
-        list(botones) + [formulario_busqueda(carpeta)]
+        list(botones) + [formulario_busqueda(carpeta, autores)]
     )
 
 
@@ -2940,7 +2998,9 @@ def pagina_autores(autores, opciones):
     """El índice de autores, por orden alfabético y agrupado por letras."""
     carpeta = posixpath.dirname(RUTA_AUTORES)
     trozos = [
-        barra_navegacion(botones_indices(carpeta, salvo=RUTA_AUTORES), carpeta),
+        barra_navegacion(
+            botones_indices(carpeta, salvo=RUTA_AUTORES), carpeta, True
+        ),
         barra_letras(autores, carpeta),
     ]
     letra_abierta = None
@@ -3046,7 +3106,25 @@ def datos_articulo(articulo, opciones, firmas, indices):
     return datos
 
 
-def indice_busqueda(numeros, opciones, indices):
+def datos_autor(autor):
+    """Lo que necesita el navegador para montar la línea de un autor.
+
+    Es lo mismo que compone linea_indice(), pero en piezas, igual que con los
+    artículos.
+    """
+    datos = [
+        autor["nombre"],
+        enlace_web(autor["pagina"]),
+        autor["articulos"],
+        autor["desde"],
+        autor["hasta"],
+    ]
+    if datos[-1] == datos[-2]:  # un solo año, y el guion lo repite
+        datos.pop()
+    return datos
+
+
+def indice_busqueda(numeros, autores, opciones, indices):
     """El índice que el navegador recorre al buscar, listo para servirlo.
 
     Va como guion y no como JSON porque el sitio también se abre con un doble
@@ -3072,24 +3150,31 @@ def indice_busqueda(numeros, opciones, indices):
         "secciones": [encabezado_seccion(nombre, "", 3, indices) for nombre in tandas],
         "firmas": [[nombre, pagina] for nombre, pagina in firmas],
         "articulos": articulos,
+        "autores": [datos_autor(autor) for autor in autores],
     }
     return "var BUSQUEDA = %s;\n" % json.dumps(
         datos, ensure_ascii=False, separators=(",", ":")
     )
 
 
-def pagina_busqueda(opciones):
-    """La página de resultados, que el guion rellena en el propio navegador."""
+def pagina_busqueda(autores=False):
+    """La página de resultados, que el guion rellena en el propio navegador.
+
+    Hay una por cada cosa que se busca; el guion es el mismo, y sabe cuál es
+    la suya porque la propia página se lo dice.
+    """
     cuerpo = """%s
 <p class="cuenta" id="cuenta">Hace falta JavaScript para buscar.</p>
-<div id="resultados"></div>
+<div id="resultados" data-busca="%s"></div>
 <script src="%s"></script>
 <script src="%s"></script>""" % (
-        barra_navegacion(botones_indices(""), ""),
+        barra_navegacion(botones_indices(""), "", autores),
+        "autores" if autores else "articulos",
         enlace_web(NOMBRE_INDICE),
         enlace_web(NOMBRE_BUSCADOR),
     )
-    return envolver_pagina("Búsqueda", cuerpo, "")
+    titulo = "Búsqueda de autores" if autores else "Búsqueda"
+    return envolver_pagina(titulo, cuerpo, "")
 
 
 def ruta_del_sitio(nombre, opciones):
@@ -3261,10 +3346,13 @@ def generar_web(opciones):
         )
     informar(opciones, "  %d páginas de autor" % len(autores))
 
-    escribir_web(NOMBRE_BUSQUEDA, pagina_busqueda(opciones), opciones)
+    escribir_web(NOMBRE_BUSQUEDA, pagina_busqueda(), opciones)
+    escribir_web(NOMBRE_BUSQUEDA_AUTORES, pagina_busqueda(True), opciones)
     escribir_web(NOMBRE_BUSCADOR, BUSCADOR, opciones)
     escribir_web(
-        NOMBRE_INDICE, indice_busqueda(numeros, opciones, indices), opciones
+        NOMBRE_INDICE,
+        indice_busqueda(numeros, autores, opciones, indices),
+        opciones,
     )
 
     # lo que quedó de una generación anterior sobra: los nombres cambian
