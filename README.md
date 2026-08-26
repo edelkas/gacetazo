@@ -10,10 +10,11 @@ servirlo en una web local.
 
 ## Requisitos
 
-Python 3, `requests` y `beautifulsoup4`.
+Python 3, `requests` y `beautifulsoup4`. `Pillow` es opcional: sólo se usa
+para reescalar las portadas, y sin él todo lo demás funciona igual.
 
 ```
-pip install requests beautifulsoup4
+pip install requests beautifulsoup4 Pillow
 ```
 
 ## Uso
@@ -51,6 +52,7 @@ python gaceta.py --web --publicar ../gaceta-web # el sitio que se cuelga, aparte
 | `-d DIR`, `--destino=DIR` | Carpeta raíz del archivo (por defecto, la actual) |
 | `-w`, `--web` | Rehace la web local a partir del mapa y de lo descargado |
 | `-x`, `--externa` | Con `--web`, enlaza los PDF a la RSME en vez de a las copias locales |
+| `-M`, `--sin-miniaturas` | No reescala las portadas para el índice, y así no hace falta Pillow |
 | `-P DIR`, `--publicar=DIR` | Con `--web`, escribe el sitio en `DIR` (con las portadas, sin los PDF) |
 | `-n`, `--simulacion` | Informa de lo que haría, sin escribir nada |
 | `-q`, `--silencioso` | Oculta la información de progreso |
@@ -70,6 +72,7 @@ numeros/
   vol.06-2003/
     2/                    <- número 2
       Portada.jpg
+      Miniatura.jpg         <- la portada al tamaño del índice
       Acerca de la portada.pdf
       6 años de La Gaceta (1998-2003).pdf
       ...
@@ -115,6 +118,24 @@ artículo, así que con `--formato=ambos` se llevan las dos.
 Nada se descarga dos veces: si el fichero ya está y su MD5 cuadra con el
 anotado, se salta. Se vuelve a bajar, sustituyendo lo que hubiera, cuando el
 MD5 no cuadra (fichero corrupto o a medias) o cuando no hay ninguno anotado.
+
+### Miniaturas de las portadas
+
+El índice enseña las noventa y tantas portadas a la vez, y a tamaño completo
+son tres megas que se bajan de golpe. Así que al guardar una portada se
+reescala también al hueco que ocupa allí, y queda junto a ella como
+`Miniatura.jpg`: 168x236 píxeles —el doble del hueco, para que no se vea
+borrosa en pantallas finas— y recortada como la recorta el navegador, con
+`object-fit: cover`. Las noventa y seis pesan 0,9 MB en vez de 3,0 MB.
+
+Se hace una sola vez: si la miniatura ya está, no se toca; sólo se rehace si
+la portada se ha vuelto a bajar después. `--web` reescala de paso las que
+falten, que para eso las necesita el índice. La página de cada número sigue
+mostrando la portada entera.
+
+Esto es lo único que necesita Pillow. Con `--sin-miniaturas` no se reescala
+nada, y el índice tira de las portadas enteras (o de las miniaturas que ya
+hubiera); sin Pillow instalado ocurre lo mismo, con un aviso.
 
 ### Barra de progreso
 
@@ -565,3 +586,4 @@ sección. Hoy el archivo completo se analiza sin un solo aviso.
       el navegador, con varios términos a la vez.
 - [x] Publicación en GitHub Pages desde una rama aparte.
 - [x] Web local: modo oscuro, con botón en la esquina y enlace al repositorio.
+- [x] Miniaturas de las portadas para el índice, con Pillow.

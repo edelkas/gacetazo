@@ -24,6 +24,11 @@ from urllib.parse import quote, urljoin, urlparse, urlunparse
 import requests
 from bs4 import BeautifulSoup, Comment
 
+try:
+    from PIL import Image, ImageOps
+except ImportError:  # Pillow es opcional: sin él no hay miniaturas
+    Image = ImageOps = None
+
 URL_BASE = "https://gaceta.rsme.es/"
 SERVIDOR = urlparse(URL_BASE).hostname
 URL_INDICE = URL_BASE + "otrosnumeros.php"
@@ -100,7 +105,16 @@ AUTOR_PORTADA = "Redacción de La Gaceta"
 
 # nombres de fichero fijos dentro de la carpeta de cada número
 FICHERO_PORTADA = "Portada"
+FICHERO_MINIATURA = "Miniatura"
 FICHERO_ENTERO = "Número completo"
+
+# La miniatura se guarda al doble del hueco que ocupa en el índice (84x118),
+# que así también sale nítida en las pantallas finas. Se recorta como recorta
+# el navegador, con object-fit: cover.
+MINIATURA = (168, 236)
+CALIDAD_MINIATURA = 80
+# Pillow mudó las constantes de remuestreo a Image.Resampling en la 9.1
+SUAVIZADO = getattr(Image, "Resampling", Image).LANCZOS if Image else None
 
 # formas en que puede bajarse un número: suelto por artículos, de una pieza,
 # o las dos cosas a la vez cuando la revista ofrece ambas
@@ -550,6 +564,42 @@ def fichero_existente(carpeta, nombre):
         if os.path.splitext(entrada)[0] == nombre:
             return os.path.join(carpeta, entrada)
     return None
+
+
+def hacer_miniatura(volumen, numero, opciones):
+    """Reescala la portada de un número al hueco que ocupa en el índice.
+
+    Sólo se hace si falta, o si la portada se ha vuelto a bajar después (que
+    entonces la vieja miniatura ya no la representa). Devuelve si ha hecho
+    falta hacerla.
+    """
+    if opciones.sin_miniaturas or Image is None:
+        return False
+
+    carpeta = ruta_carpeta_numero(volumen, numero, opciones)
+    portada = fichero_existente(carpeta, FICHERO_PORTADA)
+    if portada is None:
+        return False
+    miniatura = fichero_existente(carpeta, FICHERO_MINIATURA)
+    if miniatura and os.path.getmtime(miniatura) >= os.path.getmtime(portada):
+        return False
+
+    if opciones.simulacion:
+        return True
+    try:
+        with Image.open(portada) as imagen:
+            recorte = ImageOps.fit(imagen.convert("RGB"), MINIATURA, SUAVIZADO)
+            recorte.save(
+                os.path.join(carpeta, FICHERO_MINIATURA + ".jpg"),
+                "JPEG",
+                quality=CALIDAD_MINIATURA,
+                optimize=True,
+                progressive=True,
+            )
+    except (OSError, ValueError) as fallo:
+        avisar("no se ha podido reescalar %s: %s" % (portada, fallo))
+        return False
+    return True
 
 
 def url_absoluta(enlace):
@@ -1526,6 +1576,7 @@ def descargar_numero(volumen, numero, opciones, resumen, posicion=""):
 
     if numero.get("portada"):
         guardar(numero["portada"], carpeta, FICHERO_PORTADA, opciones, resumen)
+        resumen["miniaturas"] += hacer_miniatura(volumen, numero, opciones)
 
     # con --formato=numero los artículos sueltos sólo se bajan si el ejemplar
     # completo no está; con --formato=ambos se bajan siempre
@@ -1553,7 +1604,10 @@ def descargar_numero(volumen, numero, opciones, resumen, posicion=""):
 
 def nuevo_resumen():
     """Contadores de una tanda de descargas."""
-    return dict(guardado=0, existe=0, reservado=0, error=0, mapeados=0, rehecho=0)
+    return dict(
+        guardado=0, existe=0, reservado=0, error=0, mapeados=0, rehecho=0,
+        miniaturas=0,
+    )
 
 
 def contar_resumen(opciones, resumen):
@@ -1576,6 +1630,17 @@ def contar_resumen(opciones, resumen):
         )
     if resumen["mapeados"]:
         informar(opciones, "Se han mapeado %d números por el camino." % resumen["mapeados"])
+    if resumen["miniaturas"]:
+        cuantas = resumen["miniaturas"]
+        informar(
+            opciones,
+            "Se %s para el índice."
+            % (
+                "ha reescalado 1 portada"
+                if cuantas == 1
+                else "han reescalado %d portadas" % cuantas
+            ),
+        )
     if opciones.simulacion:
         informar(opciones, "(simulación: no se ha escrito nada en el disco)")
 
@@ -2227,15 +2292,29 @@ def portada_descargada(volumen, numero, opciones):
     return ruta_relativa(ruta, opciones) if ruta else None
 
 
+def miniatura_descargada(volumen, numero, opciones):
+    """Ruta relativa de la miniatura de la portada, si está en el disco."""
+    ruta = fichero_existente(
+        ruta_carpeta_numero(volumen, numero, opciones), FICHERO_MINIATURA
+    )
+    return ruta_relativa(ruta, opciones) if ruta else None
+
+
 def enlace_web(ruta):
     """Codifica una ruta relativa para poder usarla como href o src."""
     return quote(ruta)
 
 
 def celda_numero(volumen, numero, opciones):
-    """Celda de la tabla: la portada si la hay, y si no el nombre del número."""
+    """Celda de la tabla: la portada si la hay, y si no el nombre del número.
+
+    En el índice caben las noventa y tantas portadas a la vez, así que va la
+    miniatura; la de tamaño entero se reserva para la página del número.
+    """
     rotulo = rotulo_numero(numero)
-    portada = portada_descargada(volumen, numero, opciones)
+    portada = miniatura_descargada(volumen, numero, opciones) or portada_descargada(
+        volumen, numero, opciones
+    )
     if portada:
         contenido = '<img src="%s" alt="%s">' % (enlace_web(portada), escapar_html(rotulo))
     else:
@@ -3370,15 +3449,21 @@ def limpiar_sobras(carpetas, escritos, opciones):
     return sobras
 
 
-def copiar_portada(volumen, numero, opciones):
-    """Lleva al sitio la portada de un número, si la hay y no está ya allí."""
-    portada = portada_descargada(volumen, numero, opciones)
-    if portada is None:
-        return False
-    destino = ruta_del_sitio(portada, opciones)
-    if not opciones.simulacion:
-        shutil.copyfile(os.path.join(opciones.destino, portada), destino)
-    return True
+def copiar_portadas(volumen, numero, opciones):
+    """Lleva al sitio las imágenes de un número: la portada y su miniatura."""
+    copiadas = 0
+    for imagen in (
+        portada_descargada(volumen, numero, opciones),
+        miniatura_descargada(volumen, numero, opciones),
+    ):
+        if imagen is None:
+            continue
+        copiadas += 1
+        if not opciones.simulacion:
+            shutil.copyfile(
+                os.path.join(opciones.destino, imagen), ruta_del_sitio(imagen, opciones)
+            )
+    return copiadas
 
 
 def sin_mapear(mapa):
@@ -3413,17 +3498,29 @@ def generar_web(opciones):
             % (cuantos, rotulo_volumen(volumen), rotulo_numero(numero))
         )
 
-    asegurar_carpeta(opciones.sitio, opciones)
-    escribir_web(NOMBRE_PAGINA, pagina_indice(mapa, opciones), opciones)
-    escribir_web(NOMBRE_ESTILO, ESTILO, opciones)
-    if opciones.publicar:
-        escribir_web(NOMBRE_NOJEKYLL, "", opciones)
-
     numeros = [
         (volumen, numero)
         for volumen in mapa["volumenes"]
         for numero in volumen["numeros"]
     ]
+
+    # antes que nada las miniaturas, que el índice ya las nombra
+    reescaladas = sum(
+        hacer_miniatura(volumen, numero, opciones) for volumen, numero in numeros
+    )
+    if reescaladas:
+        una = reescaladas == 1
+        if opciones.simulacion:
+            rotulo = "portada por reescalar" if una else "portadas por reescalar"
+        else:
+            rotulo = "portada reescalada" if una else "portadas reescaladas"
+        informar(opciones, "  %d %s para el índice" % (reescaladas, rotulo))
+
+    asegurar_carpeta(opciones.sitio, opciones)
+    escribir_web(NOMBRE_PAGINA, pagina_indice(mapa, opciones), opciones)
+    escribir_web(NOMBRE_ESTILO, ESTILO, opciones)
+    if opciones.publicar:
+        escribir_web(NOMBRE_NOJEKYLL, "", opciones)
     excepciones, equivalencias = preparar_tablas(opciones)
     secciones = agrupar_secciones(numeros)
     autores = agrupar_autores(numeros, excepciones, equivalencias)
@@ -3441,7 +3538,7 @@ def generar_web(opciones):
         "excepciones": excepciones,
     }
 
-    portadas = 0
+    imagenes = 0
     for posicion, (volumen, numero) in enumerate(numeros):
         # la carpeta falta si ese número no se llegó a descargar
         pagina = ruta_pagina_numero(volumen, numero)
@@ -3455,13 +3552,13 @@ def generar_web(opciones):
             callado=True,
         )
         if opciones.publicar:
-            portadas += copiar_portada(volumen, numero, opciones)
+            imagenes += copiar_portadas(volumen, numero, opciones)
     informar(opciones, "  %d páginas de número" % len(numeros))
     if opciones.publicar:
         informar(
             opciones,
-            "  %d portadas %s"
-            % (portadas, "por copiar" if opciones.simulacion else "copiadas"),
+            "  %d imágenes de portada %s"
+            % (imagenes, "por copiar" if opciones.simulacion else "copiadas"),
         )
 
     asegurar_carpeta(ruta_del_sitio(CARPETA_SECCIONES, opciones), opciones)
@@ -3584,6 +3681,12 @@ def principal(argumentos):
              "archivo, con las portadas pero sin los PDF, listo para colgarlo",
     )
     analizador.add_option(
+        "-M", "--sin-miniaturas",
+        action="store_true", default=False,
+        help="no reescala las portadas para el índice, con lo que no hace "
+             "falta tener instalado Pillow",
+    )
+    analizador.add_option(
         "-x", "--externa",
         action="store_true", default=False,
         help="con --web, enlaza los PDF a la revista en vez de a las copias "
@@ -3668,6 +3771,13 @@ def principal(argumentos):
 
     if opciones.publicar is not None and not opciones.web:
         analizador.error("--publicar sólo tiene sentido junto a --web")
+
+    if not opciones.sin_miniaturas and Image is None and (opciones.web or opciones.descarga):
+        avisar(
+            "sin Pillow no se reescalan las portadas para el índice; se "
+            "instala con «pip install Pillow», o se calla este aviso con "
+            "--sin-miniaturas"
+        )
 
     # el sitio se escribe dentro del archivo mientras no se diga otra cosa; lo
     # que se publica no lleva PDF, así que enlaza a la revista
