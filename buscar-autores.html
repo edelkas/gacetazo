@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Búsqueda de autores - La Gaceta de la RSME</title>
+<link rel="stylesheet" href="estilo.css">
+<script src="tema.js"></script>
+</head>
+<body>
+<h1>Búsqueda de autores</h1>
+<div class="navegacion"><a href="index.html">Números</a>
+<a href="secciones/index.html">Secciones</a>
+<a href="autores/index.html">Autores</a>
+<a href="estadisticas.html">Estadísticas</a>
+<a href="avanzada.html">Búsqueda avanzada</a>
+<form class="buscar" action="buscar-autores.html" method="get" role="search"><input type="search" name="q" placeholder="Buscar por autor" aria-label="Buscar por autor"><button>Buscar</button></form></div>
+<p class="cuenta" id="cuenta">Hace falta JavaScript para buscar.</p>
+<div id="resultados" data-busca="autores"></div>
+<script src="busqueda.js"></script>
+<script src="buscador.js"></script>
+</body>
+</html>

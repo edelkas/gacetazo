@@ -3,8 +3,8 @@
 var URL_ARTICULO = "https://gaceta.rsme.es/abrir.php?id=";
 var URL_DOI = "https://www.doi.org/";
 
-/* Las claves por las que se busca: los títulos, normalizados una sola vez. */
-var CLAVES = null;
+/* Las claves por las que se busca, normalizadas una sola vez por tabla. */
+var CLAVES = {};
 
 function normalizar(texto) {
     /* sin tildes y en minúsculas, como se normaliza también al generar */
@@ -12,13 +12,51 @@ function normalizar(texto) {
                 .toLowerCase().replace(/\s+/g, " ").trim();
 }
 
-function claves() {
-    if (CLAVES === null) {
-        CLAVES = BUSQUEDA.articulos.map(function (articulo) {
-            return normalizar(articulo[0]);
+function terminos(pedido) {
+    /* cada palabra por su lado, que 'mat oli' halle 'Olimpiada Matemática' */
+    return pedido.split(/\s+/).filter(function (trozo) { return trozo; });
+}
+
+function casan(clave, buscados) {
+    /* todos los términos han de estar, aunque sea sueltos y en desorden */
+    for (var i = 0; i < buscados.length; i++) {
+        if (clave.indexOf(buscados[i]) < 0) { return false; }
+    }
+    return true;
+}
+
+function casaAlguno(clave, buscados) {
+    /* con que aparezca uno de ellos basta */
+    for (var i = 0; i < buscados.length; i++) {
+        if (clave.indexOf(buscados[i]) >= 0) { return true; }
+    }
+    return false;
+}
+
+function pruebaDe(pedido, variante) {
+    /* La manera de casar que dicen los botones de la búsqueda avanzada:
+       la unión, la intersección o la frase entera sin trocear. Sin nada
+       pedido no hay prueba, y ese campo no filtra. */
+    var limpio = normalizar(pedido);
+    if (!limpio) { return null; }
+    if (variante === "exacto") {
+        return function (clave) { return clave.indexOf(limpio) >= 0; };
+    }
+    var buscados = terminos(limpio);
+    if (variante === "algunos") {
+        return function (clave) { return casaAlguno(clave, buscados); };
+    }
+    return function (clave) { return casan(clave, buscados); };
+}
+
+function claves(cual) {
+    /* el nombre va el primero tanto en un artículo como en un autor */
+    if (!CLAVES[cual]) {
+        CLAVES[cual] = BUSQUEDA[cual].map(function (entrada) {
+            return normalizar(entrada[0]);
         });
     }
-    return CLAVES;
+    return CLAVES[cual];
 }
 
 function escapar(texto) {
@@ -36,10 +74,11 @@ function enlaceRevista(dato) {
     return escapar(typeof dato === "number" ? URL_ARTICULO + dato : dato);
 }
 
-function enumerar(trozos) {
-    /* como se enumera en castellano: 'a, b y c' */
+function enumerar(trozos, conjuncion) {
+    /* como se enumera en castellano: 'a, b y c', o 'a, b o c' */
     if (trozos.length < 2) { return trozos.join(""); }
-    return trozos.slice(0, -1).join(", ") + " y " + trozos[trozos.length - 1];
+    return trozos.slice(0, -1).join(", ") + " " + (conjuncion || "y") + " "
+        + trozos[trozos.length - 1];
 }
 
 function autores(quienes) {
@@ -52,6 +91,34 @@ function autores(quienes) {
         trozos.push(firma[1] ? enlace(firma[1], rotulo) : rotulo);
     }
     return enumerar(trozos);
+}
+
+/* Los nombres con que se firma cada artículo, normalizados a la primera. */
+var FIRMAS = null;
+
+function firmasDe(articulo) {
+    /* una cadena cuando no se pudieron separar; si no, índices en la tabla */
+    var quienes = articulo[3];
+    if (!quienes) { return []; }
+    if (typeof quienes === "string") { return [normalizar(quienes)]; }
+    var nombres = [];
+    for (var i = 0; i < quienes.length; i++) {
+        nombres.push(normalizar(BUSQUEDA.firmas[quienes[i]][0]));
+    }
+    return nombres;
+}
+
+function firmas() {
+    if (!FIRMAS) { FIRMAS = BUSQUEDA.articulos.map(firmasDe); }
+    return FIRMAS;
+}
+
+function algunaFirma(nombres, prueba) {
+    /* basta con que lo cumpla uno de los que firman */
+    for (var i = 0; i < nombres.length; i++) {
+        if (prueba(nombres[i])) { return true; }
+    }
+    return false;
 }
 
 function paginas(rango) {
@@ -79,13 +146,13 @@ function cita(articulo) {
     return '<p class="cita">' + partes.join(", ") + "</p>";
 }
 
-function agrupar(consulta) {
+function agrupar(pasa) {
     /* Los artículos vienen en el orden del archivo, así que se agrupan según
        van saliendo y al final se les da la vuelta a los números; dentro de
        cada uno se leen como en su página, del primero al último. */
-    var bloques = [], bloque = null, total = 0, todas = claves();
+    var bloques = [], bloque = null, total = 0;
     for (var i = 0; i < BUSQUEDA.articulos.length; i++) {
-        if (todas[i].indexOf(consulta) < 0) { continue; }
+        if (!pasa(i)) { continue; }
         var articulo = BUSQUEDA.articulos[i];
         total++;
         if (bloque === null || bloque.numero !== articulo[1]) {
@@ -118,33 +185,270 @@ function montar(bloques) {
     return trozos.join("\n");
 }
 
-function contar(total, pedido) {
+function conFiltro(pasa) {
+    var hallado = agrupar(pasa);
+    return { total: hallado.total, html: montar(hallado.bloques) };
+}
+
+function hallarArticulos(buscados) {
+    var titulos = claves("articulos");
+    return conFiltro(function (i) { return casan(titulos[i], buscados); });
+}
+
+function inicial(nombre) {
+    /* la letra bajo la que se archiva, como en el índice de autores */
+    var letra = normalizar(nombre.slice(0, 1)).toUpperCase();
+    return letra >= "A" && letra <= "Z" ? letra : "#";
+}
+
+function lineaAutor(autor) {
+    /* [nombre, página, artículos, desde, hasta] */
+    var cuantos = autor[2] === 1 ? "1 artículo" : autor[2] + " artículos";
+    var hasta = autor.length > 4 ? autor[4] : autor[3];
+    var años = autor[3] === hasta ? autor[3] : autor[3] + "-" + hasta;
+    return '<p class="linea">' + enlace(escapar(autor[1]), escapar(autor[0]))
+        + " (" + cuantos + ", " + años + ")</p>";
+}
+
+function hallarAutores(buscados) {
+    /* vienen ya ordenados y se pintan como en su índice, por letras */
+    var trozos = [], letra = null, total = 0, todas = claves("autores");
+    for (var i = 0; i < BUSQUEDA.autores.length; i++) {
+        if (!casan(todas[i], buscados)) { continue; }
+        var autor = BUSQUEDA.autores[i];
+        total++;
+        if (inicial(autor[0]) !== letra) {
+            letra = inicial(autor[0]);
+            trozos.push("<h2>" + escapar(letra) + "</h2>");
+        }
+        trozos.push(lineaAutor(autor));
+    }
+    return { total: total, html: trozos.join("\n") };
+}
+
+/* --- búsqueda avanzada ------------------------------------------- */
+
+var VARIANTES = ["algunos", "todos", "exacto"];
+
+function variante(pedida) {
+    return VARIANTES.indexOf(pedida) >= 0 ? pedida : "todos";
+}
+
+function limiteAño(cual, atributo, respaldo) {
+    /* el archivo entero, que es lo que el formulario trae puesto */
+    var casilla = document.getElementById(cual);
+    var limite = casilla ? Number(casilla.getAttribute(atributo)) : 0;
+    return limite || respaldo;
+}
+
+function añoPedido(busca, cual, atributo, respaldo) {
+    var pedido = parseInt(busca.get(cual), 10);
+    return isNaN(pedido) ? limiteAño(cual, atributo, respaldo) : pedido;
+}
+
+function loPedido() {
+    /* los cinco campos del formulario, tal como vengan en la dirección */
+    var busca = new URLSearchParams(location.search);
+    return {
+        titulo: (busca.get("q") || "").trim(),
+        variante: variante(busca.get("variante")),
+        autor: (busca.get("autor") || "").trim(),
+        varianteautor: variante(busca.get("varianteautor")),
+        seccion: (busca.get("seccion") || "").trim(),
+        desde: añoPedido(busca, "desde", "min", 0),
+        hasta: añoPedido(busca, "hasta", "max", 9999),
+        minimo: limiteAño("desde", "min", 0),
+        maximo: limiteAño("hasta", "max", 9999)
+    };
+}
+
+function rellenarCampo(cual, valor) {
+    var campo = document.getElementById(cual);
+    if (campo) { campo.value = valor; }
+}
+
+function marcarVariante(nombre, valor) {
+    var botones = document.getElementsByName(nombre);
+    for (var i = 0; i < botones.length; i++) {
+        botones[i].checked = botones[i].value === valor;
+    }
+}
+
+function rellenarFormulario(pedidos) {
+    /* lo pedido vuelve al formulario, que el navegador no lo repone solo */
+    rellenarCampo("titulo", pedidos.titulo);
+    rellenarCampo("autor", pedidos.autor);
+    rellenarCampo("seccion", pedidos.seccion);
+    rellenarCampo("desde", pedidos.desde);
+    rellenarCampo("hasta", pedidos.hasta);
+    marcarVariante("variante", pedidos.variante);
+    marcarVariante("varianteautor", pedidos.varianteautor);
+}
+
+function entrecomillar(trozos) {
+    return trozos.map(function (trozo) { return "«" + trozo + "»"; });
+}
+
+function criterioTexto(pedido, cual, donde) {
+    /* cómo se lee en voz alta lo que se ha pedido en un campo de texto */
+    if (cual === "exacto") { return "«" + pedido + "» entero " + donde; }
+    var trozos = entrecomillar(terminos(pedido));
+    if (trozos.length < 2) { return trozos.join("") + " " + donde; }
+    if (cual === "algunos") { return enumerar(trozos, "o") + " " + donde; }
+    return enumerar(trozos) + " " + donde;
+}
+
+function criterioAños(pedidos) {
+    /* nada que decir mientras no se acote el archivo */
+    var abre = pedidos.desde > pedidos.minimo;
+    var cierra = pedidos.hasta < pedidos.maximo;
+    if (!abre && !cierra) { return ""; }
+    if (pedidos.desde === pedidos.hasta) { return "de " + pedidos.desde; }
+    if (!cierra) { return "de " + pedidos.desde + " en adelante"; }
+    if (!abre) { return "hasta " + pedidos.hasta; }
+    return "de " + pedidos.desde + " a " + pedidos.hasta;
+}
+
+function criteriosDe(pedidos) {
+    /* lo que se ha pedido, en palabras; si no sale nada, es que no se pide */
+    var criterios = [];
+    if (pedidos.titulo) {
+        criterios.push(criterioTexto(pedidos.titulo, pedidos.variante,
+                                     "en el título"));
+    }
+    if (pedidos.autor) {
+        criterios.push(criterioTexto(pedidos.autor, pedidos.varianteautor,
+                                     "en la firma"));
+    }
+    if (pedidos.seccion) {
+        criterios.push("de la sección «" + pedidos.seccion + "»");
+    }
+    var años = criterioAños(pedidos);
+    if (años) { criterios.push(años); }
+    return criterios;
+}
+
+function filtroAvanzado(pedidos) {
+    /* una prueba por campo relleno, y el artículo ha de pasarlas todas */
+    var pruebas = [];
+    var porTitulo = pruebaDe(pedidos.titulo, pedidos.variante);
+    if (porTitulo) {
+        var titulos = claves("articulos");
+        pruebas.push(function (i) { return porTitulo(titulos[i]); });
+    }
+    var porAutor = pruebaDe(pedidos.autor, pedidos.varianteautor);
+    if (porAutor) {
+        var quienes = firmas();
+        pruebas.push(function (i) {
+            return algunaFirma(quienes[i], porAutor);
+        });
+    }
+    if (pedidos.seccion) {
+        pruebas.push(function (i) {
+            var tanda = BUSQUEDA.articulos[i][2];
+            return tanda >= 0 && BUSQUEDA.rotulos[tanda] === pedidos.seccion;
+        });
+    }
+    pruebas.push(function (i) {
+        var año = BUSQUEDA.años[BUSQUEDA.articulos[i][1]];
+        return año >= pedidos.desde && año <= pedidos.hasta;
+    });
+    return function (i) {
+        for (var k = 0; k < pruebas.length; k++) {
+            if (!pruebas[k](i)) { return false; }
+        }
+        return true;
+    };
+}
+
+function contarAvanzada(total, criterios) {
+    /* como en la búsqueda sencilla, pero enumerando todo lo pedido */
+    var lista = enumerar(criterios);
+    if (total === 0) { return "Ningún artículo cumple lo pedido: " + lista + "."; }
+    if (total === 1) { return "Un artículo cumple lo pedido: " + lista + "."; }
+    return total + " artículos cumplen lo pedido: " + lista + ".";
+}
+
+function buscarAvanzada() {
+    var pedidos = loPedido();
+    rellenarFormulario(pedidos);
+
+    var cuenta = document.getElementById("cuenta");
+    var resultados = document.getElementById("resultados");
+    var criterios = criteriosDe(pedidos);
+    if (!criterios.length) {
+        cuenta.textContent = "Rellena algún campo y pulsa «Buscar».";
+        resultados.innerHTML = "";
+        return;
+    }
+
+    /* el título de la pestaña ya dice qué se busca aquí */
+    var rotulo = pedidos.titulo || pedidos.autor || pedidos.seccion;
+    if (rotulo) { document.title = rotulo + " - " + document.title; }
+    var hallado = conFiltro(filtroAvanzado(pedidos));
+    cuenta.textContent = contarAvanzada(hallado.total, criterios);
+    resultados.innerHTML = hallado.html;
+}
+
+/* Qué se busca en cada página de resultados, que ella misma dice cuál es. */
+var MODOS = {
+    articulos: { uno: "artículo", varios: "artículos", en: "en el título",
+                 hallar: hallarArticulos },
+    autores: { uno: "autor", varios: "autores", en: "en el nombre",
+               hallar: hallarAutores }
+};
+
+function modoDe(resultados) {
+    return MODOS[resultados.getAttribute("data-busca")] || MODOS.articulos;
+}
+
+function contar(total, pedidos, modo) {
+    /* el verbo concuerda con los artículos, no con los términos */
+    var cuales = enumerar(pedidos.map(function (pedido) {
+        return "«" + pedido + "»";
+    }));
     if (total === 0) {
-        return "Ningún artículo lleva «" + pedido + "» en el título.";
+        return "Ningún " + modo.uno + " lleva " + cuales + " " + modo.en + ".";
     }
     if (total === 1) {
-        return "Un artículo lleva «" + pedido + "» en el título.";
+        return "Un " + modo.uno + " lleva " + cuales + " " + modo.en + ".";
     }
-    return total + " artículos llevan «" + pedido + "» en el título.";
+    return total + " " + modo.varios + " llevan " + cuales + " " + modo.en + ".";
 }
 
 function buscar() {
+    /* la página de resultados dice de qué búsqueda es */
+    var resultados = document.getElementById("resultados");
+    if (resultados.getAttribute("data-busca") === "avanzada") {
+        buscarAvanzada();
+    } else {
+        buscarSencilla();
+    }
+}
+
+function buscarSencilla() {
     var pedido = loQuePiden().trim();
     var casilla = document.querySelector(".buscar input");
     if (casilla) { casilla.value = pedido; }
 
     var cuenta = document.getElementById("cuenta");
     var resultados = document.getElementById("resultados");
+    var modo = modoDe(resultados);
     if (!pedido) {
-        cuenta.textContent = "Escribe un título, o parte de él, en el buscador.";
+        cuenta.textContent = "Escribe una o varias palabras que aparezcan "
+            + modo.en + ".";
         resultados.innerHTML = "";
         return;
     }
 
-    document.title = pedido + " - Búsqueda - La Gaceta de la RSME";
-    var hallado = agrupar(normalizar(pedido));
-    cuenta.textContent = contar(hallado.total, pedido);
-    resultados.innerHTML = montar(hallado.bloques);
+    /* el título de la pestaña ya dice qué se busca aquí */
+    document.title = pedido + " - " + document.title;
+    var pedidos = terminos(pedido);
+    var hallado = modo.hallar(pedidos.map(function (suelto) {
+        return normalizar(suelto);
+    }));
+    cuenta.textContent = contar(hallado.total, pedidos, modo);
+    resultados.innerHTML = hallado.html;
 }
 
 function loQuePiden() {

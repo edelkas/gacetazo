@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Búsqueda avanzada - La Gaceta de la RSME</title>
+<link rel="stylesheet" href="estilo.css">
+<script src="tema.js"></script>
+</head>
+<body>
+<h1>Búsqueda avanzada</h1>
+<div class="navegacion"><a href="index.html">Números</a>
+<a href="secciones/index.html">Secciones</a>
+<a href="autores/index.html">Autores</a>
+<a href="estadisticas.html">Estadísticas</a>
+<form class="buscar" action="buscar.html" method="get" role="search"><input type="search" name="q" placeholder="Buscar por título" aria-label="Buscar por título"><button>Buscar</button></form></div>
+<form class="avanzada" action="avanzada.html" method="get" role="search">
+<label for="titulo">Título</label>
+<div class="valor">
+<input type="search" id="titulo" name="q">
+<span class="variantes"><label><input type="radio" name="variante" value="algunos">Algunos</label><label><input type="radio" name="variante" value="todos" checked>Todos</label><label><input type="radio" name="variante" value="exacto">Exacto</label></span>
+</div>
+<label for="autor">Autor</label>
+<div class="valor">
+<input type="search" id="autor" name="autor">
+<span class="variantes"><label><input type="radio" name="varianteautor" value="algunos">Algunos</label><label><input type="radio" name="varianteautor" value="todos" checked>Todos</label><label><input type="radio" name="varianteautor" value="exacto">Exacto</label></span>
+</div>
+<label for="seccion">Sección</label>
+<div class="valor">
+<select id="seccion" name="seccion"><option value="">Todas</option><option>Acerca de la portada</option><option>Actualidad</option><option>Artículos</option><option>Carta desde los Estados Unidos</option><option>Cartas a la dirección</option><option>CONTENIDOS</option><option>Editorial</option><option>Educación</option><option>El diablo de los números</option><option>En diálogo con la Academia</option><option>Especial sobre el ICM Madrid 2006</option><option>Historia</option><option>La Columna de Matemática Computacional</option><option>La Olimpiada Matemática</option><option>Las Medallas Fields</option><option>Matemáticas en Acción</option><option>Matemáticas en las aulas de Secundaria</option><option>Miniaturas matemáticas</option><option>Mirando hacia atrás</option><option>Mirando hacia el futuro</option><option>Nombramientos</option><option>Noticias de la Sociedad</option><option>Objetos perdidos</option><option>Preguntas en busca de una respuesta</option><option>Problemas y Soluciones</option><option>Programas informáticos en Matemáticas</option><option>Reseña de libros y revistas</option></select>
+</div>
+<label for="desde">Años</label>
+<div class="valor">
+<input type="number" id="desde" name="desde" min="1998" max="2026" step="1" value="1998">
+<span>a</span>
+<input type="number" id="hasta" name="hasta" min="1998" max="2026" step="1" value="2026">
+</div>
+<div class="valor botones"><button>Buscar</button></div>
+</form>
+<p class="cuenta" id="cuenta">Hace falta JavaScript para buscar.</p>
+<div id="resultados" data-busca="avanzada"></div>
+<script src="busqueda.js"></script>
+<script src="buscador.js"></script>
+</body>
+</html>

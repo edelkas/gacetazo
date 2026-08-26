@@ -1,35 +1,68 @@
 /* Generado por gaceta.py; los cambios a mano se pierden al rehacer el sitio. */
 
+/* Los colores van todos aquí, que así el tema oscuro sólo tiene que
+   redefinirlos. El tema lo fija tema.js antes de que se pinte nada. */
+:root {
+    color-scheme: light;
+    --fondo: #fff;
+    --tinta: #222;
+    --tenue: #555;           /* letra menuda: firmas, cuentas */
+    --enlace: #036;
+    --borde: #ddd;           /* tablas, portadas y rayas de los títulos */
+    --marco: #ccd;           /* el borde de los botones */
+    --realce: #eef;          /* el fondo del botón al pasar por encima */
+    --apagado: #aaa;         /* lo que no lleva a ninguna parte */
+    --apagado-marco: #eee;
+    --campo: #fff;           /* el fondo del buscador y de los botones */
+}
+
+:root[data-tema="oscuro"] {
+    color-scheme: dark;
+    --fondo: #14171a;
+    --tinta: #d7dae0;
+    --tenue: #98a0aa;
+    --enlace: #8cb4ff;
+    --borde: #2f343b;
+    --marco: #3b424b;
+    --realce: #232a33;
+    --apagado: #5d656f;
+    --apagado-marco: #2a2f36;
+    --campo: #1b1f25;
+}
+
 html { scroll-behavior: smooth; }
 
 body {
     font-family: system-ui, "Segoe UI", Arial, sans-serif;
-    color: #222;
+    background: var(--fondo);
+    color: var(--tinta);
     margin: 2rem auto;
     max-width: 60rem;
     padding: 0 1rem;
 }
 
-h1 { font-size: 1.6rem; margin-bottom: 1rem; }
+/* el hueco de la derecha es para los botones de la esquina, que en
+   pantalla estrecha caen justo encima del titular */
+h1 { font-size: 1.6rem; margin-bottom: 1rem; padding-right: 12.5rem; }
 
 /* barra de saltos a cada volumen */
 .volumenes { margin-bottom: 1.5rem; line-height: 2; }
 .volumenes a {
-    border: 1px solid #ccd;
+    border: 1px solid var(--marco);
     border-radius: 3px;
-    color: #036;
+    color: var(--enlace);
     padding: 0.15rem 0.4rem;
     text-decoration: none;
 }
-.volumenes a:hover { background: #eef; }
+.volumenes a:hover { background: var(--realce); }
 
 table { border-collapse: collapse; }
-th, td { border: 1px solid #ddd; padding: 0.35rem; text-align: center; }
+th, td { border: 1px solid var(--borde); padding: 0.35rem; text-align: center; }
 tr { scroll-margin-top: 1rem; }
 th.volumen { font-weight: normal; text-align: left; white-space: nowrap; }
 td.vacia { border: none; }
 
-td a { color: #036; display: block; text-decoration: none; }
+td a { color: var(--enlace); display: block; text-decoration: none; }
 td a:hover { text-decoration: underline; }
 
 /* todas las portadas del mismo tamaño, y pequeñas para que quepan
@@ -38,30 +71,32 @@ td img { display: block; height: 118px; object-fit: cover; width: 84px; }
 
 /* --- página de un número ------------------------------------------- */
 
-.navegacion { line-height: 2.2; margin-bottom: 1.5rem; }
+.navegacion { line-height: 1.25; margin-bottom: 1.5rem; }
 .navegacion a, .navegacion span {
-    border: 1px solid #ccd;
+    border: 1px solid var(--marco);
     border-radius: 3px;
-    color: #036;
+    color: var(--enlace);
     padding: 0.15rem 0.5rem;
     text-decoration: none;
 }
-.navegacion a:hover { background: #eef; }
-.navegacion span { border-color: #eee; color: #aaa; }  /* extremo del archivo */
+.navegacion a:hover { background: var(--realce); }
+.navegacion span { border-color: var(--apagado-marco); color: var(--apagado); }  /* extremo del archivo */
+/* la de los saltos de página va debajo de la de los índices, y juntas */
+.navegacion.paginas { margin-top: -1rem; }
 
 .numero { align-items: flex-start; display: flex; gap: 2rem; }
 .contenido { flex: 1 1 20rem; }
 .portada { flex: 0 0 13rem; text-align: center; }
-.portada img { border: 1px solid #ddd; height: auto; width: 100%; }
+.portada img { border: 1px solid var(--borde); height: auto; width: 100%; }
 .portada p { margin: 0.6rem 0 0; }
 
-h2 { border-bottom: 1px solid #ddd; font-size: 1.2rem; margin-top: 1.6rem; }
+h2 { border-bottom: 1px solid var(--borde); font-size: 1.2rem; margin-top: 1.6rem; }
 h3 { font-size: 1.05rem; margin-top: 1.2rem; }
 h4 { font-size: 1rem; margin-top: 1rem; }
 
 /* cada artículo, como una cita con sangría francesa */
 .cita { line-height: 1.45; margin: 0.5rem 0 0.5rem 1.5rem; text-indent: -1.5rem; }
-.cita a { color: #036; }
+.cita a { color: var(--enlace); }
 .cita .doi, .cita .rsme { font-size: 0.85em; }
 
 /* en pantalla estrecha la portada se va arriba y el índice debajo */
@@ -73,19 +108,19 @@ h4 { font-size: 1rem; margin-top: 1rem; }
 /* --- índice de secciones y páginas de sección ----------------------- */
 
 .linea { margin: 0.4rem 0; }
-.linea a { color: #036; font-weight: 600; text-decoration: none; }
+.linea a { color: var(--enlace); font-weight: 600; text-decoration: none; }
 .linea a:hover { text-decoration: underline; }
 
 /* saltos a cada número con presencia en la sección */
 .numeros { font-size: 0.9rem; line-height: 2; margin-bottom: 1.5rem; }
 .numeros a {
-    border: 1px solid #ccd;
+    border: 1px solid var(--marco);
     border-radius: 3px;
-    color: #036;
+    color: var(--enlace);
     padding: 0.1rem 0.35rem;
     text-decoration: none;
 }
-.numeros a:hover { background: #eef; }
+.numeros a:hover { background: var(--realce); }
 
 h2[id] { scroll-margin-top: 1rem; }
 h1 a, h2 a, h3 a { color: inherit; text-decoration: none; }
@@ -96,34 +131,103 @@ h1 a:hover, h2 a:hover, h3 a:hover { text-decoration: underline; }
 /* saltos a cada letra del abecedario */
 .letras { line-height: 2; margin-bottom: 1.5rem; }
 .letras a, .letras span {
-    border: 1px solid #ccd;
+    border: 1px solid var(--marco);
     border-radius: 3px;
-    color: #036;
+    color: var(--enlace);
     display: inline-block;
     min-width: 1.2rem;
     padding: 0.1rem 0.3rem;
     text-align: center;
     text-decoration: none;
 }
-.letras a:hover { background: #eef; }
-.letras span { border-color: #eee; color: #ccc; }  /* letra sin autores */
+.letras a:hover { background: var(--realce); }
+.letras span { border-color: var(--apagado-marco); color: var(--apagado); }  /* letra sin autores */
+
+/* --- estadísticas ---------------------------------------------------- */
+
+/* una tabla estrecha: dos columnas y ni una línea larga */
+.estadisticas { margin-bottom: 2rem; min-width: 20rem; }
+.estadisticas th, .estadisticas td { padding: 0.3rem 0.8rem; }
+.estadisticas thead th { background: var(--realce); font-weight: 600; }
+.estadisticas .nombre { text-align: left; }
+.estadisticas .valor { text-align: right; }
+.estadisticas td a { display: inline; }
 
 /* --- buscador -------------------------------------------------------- */
 
 /* el formulario, que va al final de la barra de navegación */
 .buscar { display: inline-block; margin-left: 0.4rem; white-space: nowrap; }
 .buscar input, .buscar button {
-    border: 1px solid #ccd;
+    border: 1px solid var(--marco);
     border-radius: 3px;
     font: inherit;
     padding: 0.15rem 0.4rem;
 }
 .buscar input { width: 12rem; }
-.buscar button { background: #fff; color: #036; cursor: pointer; }
-.buscar button:hover { background: #eef; }
+.buscar button { background: var(--campo); color: var(--enlace); cursor: pointer; }
+.buscar button:hover { background: var(--realce); }
 
 /* cuántos artículos han salido */
-.cuenta { color: #555; margin-bottom: 1.5rem; }
+.cuenta { color: var(--tenue); margin-bottom: 1.5rem; }
 
 /* las maneras en que un autor ha firmado */
-.firmas { color: #555; font-size: 0.9rem; margin-bottom: 1.5rem; }
+.firmas { color: var(--tenue); font-size: 0.9rem; margin-bottom: 1.5rem; }
+
+/* --- búsqueda avanzada ----------------------------------------------- */
+
+/* dos columnas: la etiqueta de cada campo y el campo con lo que lo acompañe */
+.avanzada {
+    align-items: center;
+    display: grid;
+    gap: 0.6rem 0.8rem;
+    grid-template-columns: auto 1fr;
+    margin-bottom: 1.5rem;
+    max-width: 48rem;
+}
+.avanzada > label { text-align: right; }
+.avanzada .valor { align-items: center; display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.avanzada .botones { grid-column: 2; }
+
+.avanzada input, .avanzada select, .avanzada button {
+    border: 1px solid var(--marco);
+    border-radius: 3px;
+    font: inherit;
+    padding: 0.15rem 0.4rem;
+}
+.avanzada input[type="search"] { width: 16rem; }
+.avanzada input[type="number"] { width: 5.5rem; }
+.avanzada button { background: var(--campo); color: var(--enlace); cursor: pointer; }
+.avanzada button:hover { background: var(--realce); }
+
+/* los tres botones que dicen cómo casar lo pedido */
+.avanzada .variantes { display: flex; gap: 0.7rem; }
+.avanzada .variantes label { align-items: center; display: flex; gap: 0.25rem; }
+.avanzada .variantes input { border: none; padding: 0; }
+
+/* --- la esquina: los atajos y el tema ---------------------------- */
+
+.esquina {
+    display: flex;
+    gap: 0.4rem;
+    position: fixed;
+    right: 0.75rem;
+    top: 0.75rem;
+    z-index: 10;
+}
+.esquina button, .esquina a {
+    align-items: center;
+    background: var(--campo);
+    border: 1px solid var(--marco);
+    border-radius: 3px;
+    color: var(--enlace);
+    cursor: pointer;
+    display: flex;
+    padding: 0.2rem;
+}
+.esquina button:hover, .esquina a:hover { background: var(--realce); }
+.esquina svg { display: block; fill: currentColor; height: 24px; width: 24px; }
+
+/* de día se ofrece la luna, y de noche el sol */
+.esquina .sol { display: none; }
+[data-tema="oscuro"] .esquina .luna { display: none; }
+[data-tema="oscuro"] .esquina .sol { display: block; }
