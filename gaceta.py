@@ -42,6 +42,9 @@ NOMBRE_BUSQUEDA = "buscar.html"
 NOMBRE_BUSQUEDA_AUTORES = "buscar-autores.html"
 NOMBRE_INDICE = "busqueda.js"
 NOMBRE_BUSCADOR = "buscador.js"
+NOMBRE_TEMA = "tema.js"
+# el botón de la esquina lleva aquí
+URL_REPOSITORIO = "https://github.com/edelkas/rsme"
 # el nombre con que el formulario manda lo que se busca, y que lee buscador.js
 PARAMETRO_BUSQUEDA = "q"
 CARPETA_NUMEROS = "numeros"
@@ -1684,36 +1687,69 @@ def descargar_todo(opciones):
 ESTILO = """\
 /* Generado por gaceta.py; los cambios a mano se pierden al rehacer el sitio. */
 
+/* Los colores van todos aquí, que así el tema oscuro sólo tiene que
+   redefinirlos. El tema lo fija tema.js antes de que se pinte nada. */
+:root {
+    color-scheme: light;
+    --fondo: #fff;
+    --tinta: #222;
+    --tenue: #555;           /* letra menuda: firmas, cuentas */
+    --enlace: #036;
+    --borde: #ddd;           /* tablas, portadas y rayas de los títulos */
+    --marco: #ccd;           /* el borde de los botones */
+    --realce: #eef;          /* el fondo del botón al pasar por encima */
+    --apagado: #aaa;         /* lo que no lleva a ninguna parte */
+    --apagado-marco: #eee;
+    --campo: #fff;           /* el fondo del buscador y de los botones */
+}
+
+:root[data-tema="oscuro"] {
+    color-scheme: dark;
+    --fondo: #14171a;
+    --tinta: #d7dae0;
+    --tenue: #98a0aa;
+    --enlace: #8cb4ff;
+    --borde: #2f343b;
+    --marco: #3b424b;
+    --realce: #232a33;
+    --apagado: #5d656f;
+    --apagado-marco: #2a2f36;
+    --campo: #1b1f25;
+}
+
 html { scroll-behavior: smooth; }
 
 body {
     font-family: system-ui, "Segoe UI", Arial, sans-serif;
-    color: #222;
+    background: var(--fondo);
+    color: var(--tinta);
     margin: 2rem auto;
     max-width: 60rem;
     padding: 0 1rem;
 }
 
-h1 { font-size: 1.6rem; margin-bottom: 1rem; }
+/* el hueco de la derecha es para los botones de la esquina, que en
+   pantalla estrecha caen justo encima del titular */
+h1 { font-size: 1.6rem; margin-bottom: 1rem; padding-right: 4.5rem; }
 
 /* barra de saltos a cada volumen */
 .volumenes { margin-bottom: 1.5rem; line-height: 2; }
 .volumenes a {
-    border: 1px solid #ccd;
+    border: 1px solid var(--marco);
     border-radius: 3px;
-    color: #036;
+    color: var(--enlace);
     padding: 0.15rem 0.4rem;
     text-decoration: none;
 }
-.volumenes a:hover { background: #eef; }
+.volumenes a:hover { background: var(--realce); }
 
 table { border-collapse: collapse; }
-th, td { border: 1px solid #ddd; padding: 0.35rem; text-align: center; }
+th, td { border: 1px solid var(--borde); padding: 0.35rem; text-align: center; }
 tr { scroll-margin-top: 1rem; }
 th.volumen { font-weight: normal; text-align: left; white-space: nowrap; }
 td.vacia { border: none; }
 
-td a { color: #036; display: block; text-decoration: none; }
+td a { color: var(--enlace); display: block; text-decoration: none; }
 td a:hover { text-decoration: underline; }
 
 /* todas las portadas del mismo tamaño, y pequeñas para que quepan
@@ -1724,28 +1760,28 @@ td img { display: block; height: 118px; object-fit: cover; width: 84px; }
 
 .navegacion { line-height: 2.2; margin-bottom: 1.5rem; }
 .navegacion a, .navegacion span {
-    border: 1px solid #ccd;
+    border: 1px solid var(--marco);
     border-radius: 3px;
-    color: #036;
+    color: var(--enlace);
     padding: 0.15rem 0.5rem;
     text-decoration: none;
 }
-.navegacion a:hover { background: #eef; }
-.navegacion span { border-color: #eee; color: #aaa; }  /* extremo del archivo */
+.navegacion a:hover { background: var(--realce); }
+.navegacion span { border-color: var(--apagado-marco); color: var(--apagado); }  /* extremo del archivo */
 
 .numero { align-items: flex-start; display: flex; gap: 2rem; }
 .contenido { flex: 1 1 20rem; }
 .portada { flex: 0 0 13rem; text-align: center; }
-.portada img { border: 1px solid #ddd; height: auto; width: 100%; }
+.portada img { border: 1px solid var(--borde); height: auto; width: 100%; }
 .portada p { margin: 0.6rem 0 0; }
 
-h2 { border-bottom: 1px solid #ddd; font-size: 1.2rem; margin-top: 1.6rem; }
+h2 { border-bottom: 1px solid var(--borde); font-size: 1.2rem; margin-top: 1.6rem; }
 h3 { font-size: 1.05rem; margin-top: 1.2rem; }
 h4 { font-size: 1rem; margin-top: 1rem; }
 
 /* cada artículo, como una cita con sangría francesa */
 .cita { line-height: 1.45; margin: 0.5rem 0 0.5rem 1.5rem; text-indent: -1.5rem; }
-.cita a { color: #036; }
+.cita a { color: var(--enlace); }
 .cita .doi, .cita .rsme { font-size: 0.85em; }
 
 /* en pantalla estrecha la portada se va arriba y el índice debajo */
@@ -1757,19 +1793,19 @@ h4 { font-size: 1rem; margin-top: 1rem; }
 /* --- índice de secciones y páginas de sección ----------------------- */
 
 .linea { margin: 0.4rem 0; }
-.linea a { color: #036; font-weight: 600; text-decoration: none; }
+.linea a { color: var(--enlace); font-weight: 600; text-decoration: none; }
 .linea a:hover { text-decoration: underline; }
 
 /* saltos a cada número con presencia en la sección */
 .numeros { font-size: 0.9rem; line-height: 2; margin-bottom: 1.5rem; }
 .numeros a {
-    border: 1px solid #ccd;
+    border: 1px solid var(--marco);
     border-radius: 3px;
-    color: #036;
+    color: var(--enlace);
     padding: 0.1rem 0.35rem;
     text-decoration: none;
 }
-.numeros a:hover { background: #eef; }
+.numeros a:hover { background: var(--realce); }
 
 h2[id] { scroll-margin-top: 1rem; }
 h1 a, h2 a, h3 a { color: inherit; text-decoration: none; }
@@ -1780,38 +1816,133 @@ h1 a:hover, h2 a:hover, h3 a:hover { text-decoration: underline; }
 /* saltos a cada letra del abecedario */
 .letras { line-height: 2; margin-bottom: 1.5rem; }
 .letras a, .letras span {
-    border: 1px solid #ccd;
+    border: 1px solid var(--marco);
     border-radius: 3px;
-    color: #036;
+    color: var(--enlace);
     display: inline-block;
     min-width: 1.2rem;
     padding: 0.1rem 0.3rem;
     text-align: center;
     text-decoration: none;
 }
-.letras a:hover { background: #eef; }
-.letras span { border-color: #eee; color: #ccc; }  /* letra sin autores */
+.letras a:hover { background: var(--realce); }
+.letras span { border-color: var(--apagado-marco); color: var(--apagado); }  /* letra sin autores */
 
 /* --- buscador -------------------------------------------------------- */
 
 /* el formulario, que va al final de la barra de navegación */
 .buscar { display: inline-block; margin-left: 0.4rem; white-space: nowrap; }
 .buscar input, .buscar button {
-    border: 1px solid #ccd;
+    border: 1px solid var(--marco);
     border-radius: 3px;
     font: inherit;
     padding: 0.15rem 0.4rem;
 }
 .buscar input { width: 12rem; }
-.buscar button { background: #fff; color: #036; cursor: pointer; }
-.buscar button:hover { background: #eef; }
+.buscar button { background: var(--campo); color: var(--enlace); cursor: pointer; }
+.buscar button:hover { background: var(--realce); }
 
 /* cuántos artículos han salido */
-.cuenta { color: #555; margin-bottom: 1.5rem; }
+.cuenta { color: var(--tenue); margin-bottom: 1.5rem; }
 
 /* las maneras en que un autor ha firmado */
-.firmas { color: #555; font-size: 0.9rem; margin-bottom: 1.5rem; }
+.firmas { color: var(--tenue); font-size: 0.9rem; margin-bottom: 1.5rem; }
+
+/* --- la esquina: el tema y el repositorio ---------------------------- */
+
+.esquina {
+    display: flex;
+    gap: 0.4rem;
+    position: fixed;
+    right: 0.75rem;
+    top: 0.75rem;
+    z-index: 10;
+}
+.esquina button, .esquina a {
+    align-items: center;
+    background: var(--campo);
+    border: 1px solid var(--marco);
+    border-radius: 3px;
+    color: var(--enlace);
+    cursor: pointer;
+    display: flex;
+    padding: 0.2rem;
+}
+.esquina button:hover, .esquina a:hover { background: var(--realce); }
+.esquina svg { display: block; fill: currentColor; height: 24px; width: 24px; }
+
+/* de día se ofrece la luna, y de noche el sol */
+.esquina .sol { display: none; }
+[data-tema="oscuro"] .esquina .luna { display: none; }
+[data-tema="oscuro"] .esquina .sol { display: block; }
 """
+
+# El tema se elige en el navegador y se recuerda allí mismo: el sitio es
+# estático y no tiene dónde apuntarlo. El guion va en la cabecera de cada
+# página para que el color quede puesto antes de pintar nada.
+TEMA = """/* Generado por gaceta.py; los cambios a mano se pierden al rehacer el sitio. */
+
+var CLAVE_TEMA = "tema";
+var REPOSITORIO = "%(repositorio)s";
+
+/* Octicons (MIT): moon-24, sun-24 y mark-github-24 */
+var LUNA = '<svg class="luna" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.768 3.96v.001l-.002-.005a9.08 9.08 0 0 0-.218-.779c-.13-.394.21-.8.602-.67.29.096.575.205.855.328l.01.005A10.002 10.002 0 0 1 12 22a10.002 10.002 0 0 1-9.162-5.985l-.004-.01a9.722 9.722 0 0 1-.329-.855c-.13-.392.277-.732.67-.602.257.084.517.157.78.218l.004.002A9 9 0 0 0 14.999 6a9.09 9.09 0 0 0-.231-2.04ZM16.5 6c0 5.799-4.701 10.5-10.5 10.5-.426 0-.847-.026-1.26-.075A8.5 8.5 0 1 0 16.425 4.74c.05.413.075.833.075 1.259Z"/></svg>';
+var SOL = '<svg class="sol" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19a7 7 0 1 1 0-14 7 7 0 0 1 0 14Zm0-1.5a5.5 5.5 0 1 0 0-11 5.5 5.5 0 1 0 0 11Zm-5.657.157a.75.75 0 0 1 0 1.06l-1.768 1.768a.749.749 0 0 1-1.275-.326.749.749 0 0 1 .215-.734l1.767-1.768a.75.75 0 0 1 1.061 0ZM3.515 3.515a.75.75 0 0 1 1.06 0l1.768 1.768a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L3.515 4.575a.75.75 0 0 1 0-1.06ZM12 0a.75.75 0 0 1 .75.75v2.5a.75.75 0 0 1-1.5 0V.75A.75.75 0 0 1 12 0ZM4 12a.75.75 0 0 1-.75.75H.75a.75.75 0 0 1 0-1.5h2.5A.75.75 0 0 1 4 12Zm8 8a.75.75 0 0 1 .75.75v2.5a.75.75 0 0 1-1.5 0v-2.5A.75.75 0 0 1 12 20Zm12-8a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h2.5A.75.75 0 0 1 24 12Zm-6.343 5.657a.75.75 0 0 1 1.06 0l1.768 1.768a.751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018l-1.768-1.767a.75.75 0 0 1 0-1.061Zm2.828-14.142a.75.75 0 0 1 0 1.06l-1.768 1.768a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042l1.767-1.768a.75.75 0 0 1 1.061 0Z"/></svg>';
+var GITHUB = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.226 17.284c-2.965-.36-5.054-2.493-5.054-5.256 0-1.123.404-2.336 1.078-3.144-.292-.741-.247-2.314.09-2.965.898-.112 2.111.36 2.83 1.01.853-.269 1.752-.404 2.853-.404 1.1 0 1.999.135 2.807.382.696-.629 1.932-1.1 2.83-.988.315.606.36 2.179.067 2.942.72.854 1.101 2 1.101 3.167 0 2.763-2.089 4.852-5.098 5.234.763.494 1.28 1.572 1.28 2.807v2.336c0 .674.561 1.056 1.235.786 4.066-1.55 7.255-5.615 7.255-10.646C23.5 6.188 18.334 1 11.978 1 5.62 1 .5 6.188.5 12.545c0 4.986 3.167 9.12 7.435 10.669.606.225 1.19-.18 1.19-.786V20.63a2.9 2.9 0 0 1-1.078.224c-1.483 0-2.359-.808-2.987-2.313-.247-.607-.517-.966-1.034-1.033-.27-.023-.359-.135-.359-.27 0-.27.45-.471.898-.471.652 0 1.213.404 1.797 1.235.45.651.921.943 1.483.943.561 0 .92-.202 1.437-.719.382-.381.674-.718.944-.943"/></svg>';
+
+function apuntado() {
+    /* en modo privado algunos navegadores ni dejan mirar */
+    try { return localStorage.getItem(CLAVE_TEMA); } catch (error) { return null; }
+}
+
+function apuntar(cual) {
+    try { localStorage.setItem(CLAVE_TEMA, cual); } catch (error) { /* nada */ }
+}
+
+function preferido() {
+    /* a falta de elección, la del sistema */
+    return window.matchMedia
+        && window.matchMedia("(prefers-color-scheme: dark)").matches;
+}
+
+function esOscuro() {
+    return document.documentElement.getAttribute("data-tema") === "oscuro";
+}
+
+function poner(cual) {
+    document.documentElement.setAttribute("data-tema", cual);
+    var boton = document.querySelector(".esquina .tema");
+    if (boton) {
+        var rotulo = cual === "oscuro" ? "Volver al modo claro"
+                                       : "Cambiar al modo oscuro";
+        boton.setAttribute("aria-label", rotulo);
+        boton.setAttribute("title", rotulo);
+    }
+}
+
+poner(apuntado() || (preferido() ? "oscuro" : "claro"));
+
+function esquina() {
+    /* los botones los pone el guion y no cada página: son tres iconos que
+       ocupan más que todo esto, y así no viajan mil veces */
+    var caja = document.createElement("div");
+    caja.className = "esquina";
+    caja.innerHTML = '<button class="tema" type="button">' + LUNA + SOL
+        + '</button><a class="repo" href="' + REPOSITORIO
+        + '" title="El repositorio en GitHub"'
+        + ' aria-label="El repositorio en GitHub">' + GITHUB + "</a>";
+    document.body.insertBefore(caja, document.body.firstChild);
+    caja.querySelector(".tema").addEventListener("click", function () {
+        var cual = esOscuro() ? "claro" : "oscuro";
+        poner(cual);
+        apuntar(cual);
+    });
+    poner(esOscuro() ? "oscuro" : "claro");  /* para rotular el botón */
+}
+
+document.addEventListener("DOMContentLoaded", esquina);
+"""
+
 
 # Todo el trabajo de búsqueda lo hace el navegador: el sitio es estático y ha
 # de poder abrirse tanto colgado de un servidor como con un doble clic.
@@ -2050,6 +2181,7 @@ PLANTILLA_PAGINA = """<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>%(titulo)s - La Gaceta de la RSME</title>
 <link rel="stylesheet" href="%(estilo)s">
+<script src="%(tema)s"></script>
 </head>
 <body>
 <h1>%(cabecera)s</h1>
@@ -2154,6 +2286,7 @@ def pagina_indice(mapa, opciones):
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>La Gaceta de la RSME</title>
 <link rel="stylesheet" href="%s">
+<script src="%s"></script>
 </head>
 <body>
 <h1>La Gaceta de la RSME</h1>
@@ -2166,6 +2299,7 @@ def pagina_indice(mapa, opciones):
 </html>
 """ % (
         enlace_web(NOMBRE_ESTILO),
+        enlace_web(NOMBRE_TEMA),
         barra_navegacion(botones_indices("", salvo=NOMBRE_PAGINA), ""),
         barra_volumenes(volumenes),
         "\n".join(filas),
@@ -2341,6 +2475,7 @@ def envolver_pagina(titulo, cuerpo, carpeta, destino=None):
         "titulo": escapar_html(titulo),
         "cabecera": cabecera,
         "estilo": enlace_desde(NOMBRE_ESTILO, carpeta),
+        "tema": enlace_desde(NOMBRE_TEMA, carpeta),
         "cuerpo": cuerpo,
     }
 
@@ -3157,6 +3292,11 @@ def indice_busqueda(numeros, autores, opciones, indices):
     )
 
 
+def guion_tema():
+    """El guion que pone el tema y los botones de la esquina."""
+    return TEMA % {"repositorio": URL_REPOSITORIO}
+
+
 def pagina_busqueda(autores=False):
     """La página de resultados, que el guion rellena en el propio navegador.
 
@@ -3346,6 +3486,7 @@ def generar_web(opciones):
         )
     informar(opciones, "  %d páginas de autor" % len(autores))
 
+    escribir_web(NOMBRE_TEMA, guion_tema(), opciones)
     escribir_web(NOMBRE_BUSQUEDA, pagina_busqueda(), opciones)
     escribir_web(NOMBRE_BUSQUEDA_AUTORES, pagina_busqueda(True), opciones)
     escribir_web(NOMBRE_BUSCADOR, BUSCADOR, opciones)

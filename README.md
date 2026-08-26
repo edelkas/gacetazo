@@ -143,6 +143,7 @@ sin servidor de por medio:
 ```
 index.html                        <- portada: la tabla de volúmenes
 estilo.css
+tema.js                           <- el modo oscuro y los botones de la esquina
 buscar.html                       <- resultados de la búsqueda
 buscar-autores.html               <- y los de la búsqueda de autores
 numeros/vol.29-2026/1/            <- una carpeta por número, con su index.html
@@ -327,6 +328,34 @@ páginas. Mandarla ya escrita costaba el doble: así el índice se queda en 535 
 encabezados de número y de sección, que son ciento veintitrés y no dos mil, sí
 viajan montados. Sólo lo carga `buscar.html`, y buscar lleva unas centésimas de
 segundo.
+
+### Modo oscuro
+
+Arriba a la derecha, ancladas a la esquina y siempre a la vista, van dos
+botones: una media luna que enciende el modo oscuro —y que entonces se vuelve
+un sol para deshacerlo— y el logotipo de GitHub, que lleva al repositorio. Los
+iconos son de [Octicons](https://primer.style/octicons/) (`moon-24`, `sun-24` y
+`mark-github-24`, con licencia MIT), incrustados como SVG.
+
+La paleta entera vive en un puñado de variables CSS al principio de
+`estilo.css`, y el tema oscuro no hace más que redefinirlas:
+
+```css
+:root { --fondo: #fff; --tinta: #222; --enlace: #036; ... }
+:root[data-tema="oscuro"] { --fondo: #14171a; --tinta: #d7dae0; ... }
+```
+
+Quién pone ese `data-tema` es `tema.js`, que va en la cabecera de todas las
+páginas para que el color esté puesto antes de pintar nada y la página no
+parpadee. A falta de elección previa hace caso al sistema
+(`prefers-color-scheme`), y lo que se elija con el botón se recuerda en el
+`localStorage` del navegador, que el sitio es estático y no tiene otro sitio
+donde apuntarlo. Si el navegador no lo deja —en una ventana privada, por
+ejemplo—, el botón sigue funcionando, sólo que sin memoria.
+
+Los botones también los pone `tema.js`, en vez de venir en cada página: los
+tres iconos ocupan más de dos kilobytes, y así viajan una sola vez y no mil
+trescientas.
 
 ### Web para publicar
 
@@ -535,3 +564,4 @@ sección. Hoy el archivo completo se analiza sin un solo aviso.
 - [x] Web local: búsqueda de artículos por título y de autores por nombre, en
       el navegador, con varios términos a la vez.
 - [x] Publicación en GitHub Pages desde una rama aparte.
+- [x] Web local: modo oscuro, con botón en la esquina y enlace al repositorio.
