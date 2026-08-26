@@ -8,6 +8,31 @@ PDF y otros sólo artículo por artículo. `gaceta.py` recorre la web y vuelca e
 y sus metadatos), para después descargarlo, organizarlo por volumen y número y
 servirlo en una web local.
 
+## Tabla de contenidos
+
+- [Requisitos](#requisitos)
+- [Uso](#uso)
+- [Descarga](#descarga)
+   * [Miniaturas de las portadas](#miniaturas-de-las-portadas)
+   * [Barra de progreso](#barra-de-progreso)
+- [Web local](#web-local)
+   * [Índice de secciones](#índice-de-secciones)
+   * [Índice de autores](#índice-de-autores)
+      + [Firmas de una misma persona](#firmas-de-una-misma-persona)
+   * [Estadísticas](#estadísticas)
+   * [Búsqueda](#búsqueda)
+   * [Búsqueda avanzada](#búsqueda-avanzada)
+   * [La esquina y el modo oscuro](#la-esquina-y-el-modo-oscuro)
+   * [Web para publicar](#web-para-publicar)
+- [Publicar en GitHub Pages](#publicar-en-github-pages)
+   * [Cada vez que se quiera actualizar lo publicado](#cada-vez-que-se-quiera-actualizar-lo-publicado)
+   * [Cómo se preparó todo esto (no hace falta repetirlo)](#cómo-se-preparó-todo-esto-no-hace-falta-repetirlo)
+- [Material reservado a los socios](#material-reservado-a-los-socios)
+   * [Todo va cifrado](#todo-va-cifrado)
+- [Los dos ficheros](#los-dos-ficheros)
+- [Formato de `sitemap.json`](#formato-de-sitemapjson)
+- [Estado](#estado)
+
 ## Requisitos
 
 Python 3, `requests` y `beautifulsoup4`. `Pillow` es opcional: sólo se usa
