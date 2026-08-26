@@ -167,6 +167,7 @@ estilo.css
 tema.js                           <- el modo oscuro y los botones de la esquina
 buscar.html                       <- resultados de la búsqueda
 buscar-autores.html               <- y los de la búsqueda de autores
+avanzada.html                     <- la búsqueda avanzada, formulario incluido
 estadisticas.html                 <- tres tablas con las cuentas del archivo
 numeros/vol.29-2026/1/            <- una carpeta por número, con su index.html
 secciones/index.html              <- índice de secciones
@@ -363,11 +364,12 @@ ficheros de la raíz:
 ```
 buscar.html                       <- la página de resultados, vacía
 buscar-autores.html               <- la de los autores, también vacía
+avanzada.html                     <- la avanzada, con su formulario
 busqueda.js                       <- el índice: una entrada por artículo y autor
-buscador.js                       <- las cien líneas que buscan y pintan
+buscador.js                       <- las líneas que buscan y pintan
 ```
 
-Las dos páginas de resultados son la misma salvo por un `data-busca` que dice
+Las tres páginas de resultados son la misma salvo por un `data-busca` que dice
 qué se busca en ella, y el guion, que es uno solo, lo lee para saber en qué
 tabla mirar y cómo pintar lo hallado.
 
@@ -378,11 +380,43 @@ sí cargar un guion. Con eso el sitio se basta a sí mismo: no necesita el
 
 Cada artículo viaja en piezas —título, autores, páginas, DOI y enlaces— y es
 `buscador.js` quien arma la cita, igual que la arma `gaceta.py` para las
-páginas. Mandarla ya escrita costaba el doble: así el índice se queda en 535 KB
-(334 KB con `--externa`), que el servidor manda comprimidos a 147 y 104 KB. Los
+páginas. Mandarla ya escrita costaba el doble: así el índice se queda en 536 KB
+(334 KB con `--externa`), que el servidor manda comprimidos a 147 y 103 KB. Los
 encabezados de número y de sección, que son ciento veintitrés y no dos mil, sí
-viajan montados. Sólo lo carga `buscar.html`, y buscar lleva unas centésimas de
-segundo.
+viajan montados. Lleva además el año de cada número y el nombre de cada
+sección, que es por donde filtra la búsqueda avanzada. Sólo lo cargan las
+páginas de resultados, y buscar lleva unas centésimas de segundo.
+
+### Búsqueda avanzada
+
+`avanzada.html` cruza varios criterios a la vez. El formulario se manda a su
+propia página, así que lo pedido se queda a la vista y puede retocarse sin
+volver atrás:
+
+- **Título**, con tres variantes: *Algunos* (basta con que aparezca uno de los
+  términos), *Todos* (han de estar todos, como en la búsqueda sencilla) y
+  *Exacto* (la frase entera, sin trocear).
+- **Autor**, con las mismas tres variantes. Casa si lo cumple alguno de los que
+  firman el artículo, no la lista entera.
+- **Sección**, un desplegable con las del archivo por orden alfabético, o
+  «Todas».
+- **Años**, dos casillas acotadas al archivo (de 1998 a 2026), que empiezan
+  abiertas de par en par.
+
+Un artículo sale si cumple todos los campos que se hayan rellenado. Los
+resultados se pintan como en la búsqueda sencilla —por número y sección, del
+más reciente al más antiguo— y el resumen enumera lo pedido:
+
+> 9 artículos cumplen lo pedido: «matematicas» en el título, de la sección
+> «Educación» y de 2005 a 2015.
+
+Con el formulario tal como viene no se busca nada: los años, mientras no se
+acoten, no cuentan como criterio.
+
+Lo pedido viaja en la dirección
+(`avanzada.html?q=gauss&variante=todos&desde=2005`), así que una búsqueda puede
+guardarse o pasarse a otro; al abrirla, el guion repone el formulario, que el
+navegador no lo hace solo.
 
 ### Modo oscuro
 
@@ -633,3 +667,4 @@ sección. Hoy el archivo completo se analiza sin un solo aviso.
       enlace al repositorio.
 - [x] Miniaturas de las portadas para el índice, con Pillow.
 - [x] Web local: página de estadísticas con las cuentas del archivo.
+- [x] Web local: búsqueda avanzada por título, autor, sección y años.

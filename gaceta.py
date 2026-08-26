@@ -46,6 +46,7 @@ NOMBRE_NOJEKYLL = ".nojekyll"
 NOMBRE_BUSQUEDA = "buscar.html"
 NOMBRE_BUSQUEDA_AUTORES = "buscar-autores.html"
 NOMBRE_ESTADISTICAS = "estadisticas.html"
+NOMBRE_AVANZADA = "avanzada.html"
 NOMBRE_INDICE = "busqueda.js"
 NOMBRE_BUSCADOR = "buscador.js"
 NOMBRE_TEMA = "tema.js"
@@ -55,6 +56,17 @@ PROLIFICOS = 10
 URL_REPOSITORIO = "https://github.com/edelkas/rsme"
 # el nombre con que el formulario manda lo que se busca, y que lee buscador.js
 PARAMETRO_BUSQUEDA = "q"
+# los demás campos de la búsqueda avanzada, que buscador.js lee igual
+PARAMETRO_VARIANTE = "variante"
+PARAMETRO_AUTOR = "autor"
+PARAMETRO_VARIANTE_AUTOR = "varianteautor"
+PARAMETRO_SECCION = "seccion"
+PARAMETRO_DESDE = "desde"
+PARAMETRO_HASTA = "hasta"
+# cómo se casa lo que se pide con lo que hay: la unión, la intersección o
+# la frase entera sin trocear
+VARIANTES = (("algunos", "Algunos"), ("todos", "Todos"), ("exacto", "Exacto"))
+VARIANTE = "todos"
 CARPETA_NUMEROS = "numeros"
 CARPETA_SECCIONES = "secciones"
 RUTA_SECCIONES = CARPETA_SECCIONES + "/" + NOMBRE_PAGINA
@@ -1928,6 +1940,37 @@ h1 a:hover, h2 a:hover, h3 a:hover { text-decoration: underline; }
 /* las maneras en que un autor ha firmado */
 .firmas { color: var(--tenue); font-size: 0.9rem; margin-bottom: 1.5rem; }
 
+/* --- búsqueda avanzada ----------------------------------------------- */
+
+/* dos columnas: la etiqueta de cada campo y el campo con lo que lo acompañe */
+.avanzada {
+    align-items: center;
+    display: grid;
+    gap: 0.6rem 0.8rem;
+    grid-template-columns: auto 1fr;
+    margin-bottom: 1.5rem;
+    max-width: 48rem;
+}
+.avanzada > label { text-align: right; }
+.avanzada .valor { align-items: center; display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.avanzada .botones { grid-column: 2; }
+
+.avanzada input, .avanzada select, .avanzada button {
+    border: 1px solid var(--marco);
+    border-radius: 3px;
+    font: inherit;
+    padding: 0.15rem 0.4rem;
+}
+.avanzada input[type="search"] { width: 16rem; }
+.avanzada input[type="number"] { width: 5.5rem; }
+.avanzada button { background: var(--campo); color: var(--enlace); cursor: pointer; }
+.avanzada button:hover { background: var(--realce); }
+
+/* los tres botones que dicen cómo casar lo pedido */
+.avanzada .variantes { display: flex; gap: 0.7rem; }
+.avanzada .variantes label { align-items: center; display: flex; gap: 0.25rem; }
+.avanzada .variantes input { border: none; padding: 0; }
+
 /* --- la esquina: el tema y el repositorio ---------------------------- */
 
 .esquina {
@@ -2020,9 +2063,10 @@ function propagar(cual) {
             enlaces[i].setAttribute("href", conTema(destino, cual));
         }
     }
-    /* el formulario rehace la consulta al enviarse, y se llevaría por delante
-       lo que hubiera en la dirección; el tema va en un campo escondido */
-    var formularios = document.getElementsByClassName("buscar");
+    /* los formularios rehacen la consulta al enviarse, y se llevarían por
+       delante lo que hubiera en la dirección; el tema va en un campo
+       escondido */
+    var formularios = document.getElementsByTagName("form");
     for (var j = 0; j < formularios.length; j++) {
         var campo = formularios[j].querySelector("input[name=" + CLAVE_TEMA + "]");
         if (!campo) {
@@ -2113,6 +2157,30 @@ function casan(clave, buscados) {
     return true;
 }
 
+function casaAlguno(clave, buscados) {
+    /* con que aparezca uno de ellos basta */
+    for (var i = 0; i < buscados.length; i++) {
+        if (clave.indexOf(buscados[i]) >= 0) { return true; }
+    }
+    return false;
+}
+
+function pruebaDe(pedido, variante) {
+    /* La manera de casar que dicen los botones de la búsqueda avanzada:
+       la unión, la intersección o la frase entera sin trocear. Sin nada
+       pedido no hay prueba, y ese campo no filtra. */
+    var limpio = normalizar(pedido);
+    if (!limpio) { return null; }
+    if (variante === "exacto") {
+        return function (clave) { return clave.indexOf(limpio) >= 0; };
+    }
+    var buscados = terminos(limpio);
+    if (variante === "algunos") {
+        return function (clave) { return casaAlguno(clave, buscados); };
+    }
+    return function (clave) { return casan(clave, buscados); };
+}
+
 function claves(cual) {
     /* el nombre va el primero tanto en un artículo como en un autor */
     if (!CLAVES[cual]) {
@@ -2138,10 +2206,11 @@ function enlaceRevista(dato) {
     return escapar(typeof dato === "number" ? URL_ARTICULO + dato : dato);
 }
 
-function enumerar(trozos) {
-    /* como se enumera en castellano: 'a, b y c' */
+function enumerar(trozos, conjuncion) {
+    /* como se enumera en castellano: 'a, b y c', o 'a, b o c' */
     if (trozos.length < 2) { return trozos.join(""); }
-    return trozos.slice(0, -1).join(", ") + " y " + trozos[trozos.length - 1];
+    return trozos.slice(0, -1).join(", ") + " " + (conjuncion || "y") + " "
+        + trozos[trozos.length - 1];
 }
 
 function autores(quienes) {
@@ -2154,6 +2223,34 @@ function autores(quienes) {
         trozos.push(firma[1] ? enlace(firma[1], rotulo) : rotulo);
     }
     return enumerar(trozos);
+}
+
+/* Los nombres con que se firma cada artículo, normalizados a la primera. */
+var FIRMAS = null;
+
+function firmasDe(articulo) {
+    /* una cadena cuando no se pudieron separar; si no, índices en la tabla */
+    var quienes = articulo[3];
+    if (!quienes) { return []; }
+    if (typeof quienes === "string") { return [normalizar(quienes)]; }
+    var nombres = [];
+    for (var i = 0; i < quienes.length; i++) {
+        nombres.push(normalizar(BUSQUEDA.firmas[quienes[i]][0]));
+    }
+    return nombres;
+}
+
+function firmas() {
+    if (!FIRMAS) { FIRMAS = BUSQUEDA.articulos.map(firmasDe); }
+    return FIRMAS;
+}
+
+function algunaFirma(nombres, prueba) {
+    /* basta con que lo cumpla uno de los que firman */
+    for (var i = 0; i < nombres.length; i++) {
+        if (prueba(nombres[i])) { return true; }
+    }
+    return false;
 }
 
 function paginas(rango) {
@@ -2181,13 +2278,13 @@ function cita(articulo) {
     return '<p class="cita">' + partes.join(", ") + "</p>";
 }
 
-function agrupar(buscados) {
+function agrupar(pasa) {
     /* Los artículos vienen en el orden del archivo, así que se agrupan según
        van saliendo y al final se les da la vuelta a los números; dentro de
        cada uno se leen como en su página, del primero al último. */
-    var bloques = [], bloque = null, total = 0, todas = claves("articulos");
+    var bloques = [], bloque = null, total = 0;
     for (var i = 0; i < BUSQUEDA.articulos.length; i++) {
-        if (!casan(todas[i], buscados)) { continue; }
+        if (!pasa(i)) { continue; }
         var articulo = BUSQUEDA.articulos[i];
         total++;
         if (bloque === null || bloque.numero !== articulo[1]) {
@@ -2220,9 +2317,14 @@ function montar(bloques) {
     return trozos.join("\n");
 }
 
-function hallarArticulos(buscados) {
-    var hallado = agrupar(buscados);
+function conFiltro(pasa) {
+    var hallado = agrupar(pasa);
     return { total: hallado.total, html: montar(hallado.bloques) };
+}
+
+function hallarArticulos(buscados) {
+    var titulos = claves("articulos");
+    return conFiltro(function (i) { return casan(titulos[i], buscados); });
 }
 
 function inicial(nombre) {
@@ -2256,6 +2358,170 @@ function hallarAutores(buscados) {
     return { total: total, html: trozos.join("\n") };
 }
 
+/* --- búsqueda avanzada ------------------------------------------- */
+
+var VARIANTES = ["algunos", "todos", "exacto"];
+
+function variante(pedida) {
+    return VARIANTES.indexOf(pedida) >= 0 ? pedida : "todos";
+}
+
+function limiteAño(cual, atributo, respaldo) {
+    /* el archivo entero, que es lo que el formulario trae puesto */
+    var casilla = document.getElementById(cual);
+    var limite = casilla ? Number(casilla.getAttribute(atributo)) : 0;
+    return limite || respaldo;
+}
+
+function añoPedido(busca, cual, atributo, respaldo) {
+    var pedido = parseInt(busca.get(cual), 10);
+    return isNaN(pedido) ? limiteAño(cual, atributo, respaldo) : pedido;
+}
+
+function loPedido() {
+    /* los cinco campos del formulario, tal como vengan en la dirección */
+    var busca = new URLSearchParams(location.search);
+    return {
+        titulo: (busca.get("q") || "").trim(),
+        variante: variante(busca.get("variante")),
+        autor: (busca.get("autor") || "").trim(),
+        varianteautor: variante(busca.get("varianteautor")),
+        seccion: (busca.get("seccion") || "").trim(),
+        desde: añoPedido(busca, "desde", "min", 0),
+        hasta: añoPedido(busca, "hasta", "max", 9999),
+        minimo: limiteAño("desde", "min", 0),
+        maximo: limiteAño("hasta", "max", 9999)
+    };
+}
+
+function rellenarCampo(cual, valor) {
+    var campo = document.getElementById(cual);
+    if (campo) { campo.value = valor; }
+}
+
+function marcarVariante(nombre, valor) {
+    var botones = document.getElementsByName(nombre);
+    for (var i = 0; i < botones.length; i++) {
+        botones[i].checked = botones[i].value === valor;
+    }
+}
+
+function rellenarFormulario(pedidos) {
+    /* lo pedido vuelve al formulario, que el navegador no lo repone solo */
+    rellenarCampo("titulo", pedidos.titulo);
+    rellenarCampo("autor", pedidos.autor);
+    rellenarCampo("seccion", pedidos.seccion);
+    rellenarCampo("desde", pedidos.desde);
+    rellenarCampo("hasta", pedidos.hasta);
+    marcarVariante("variante", pedidos.variante);
+    marcarVariante("varianteautor", pedidos.varianteautor);
+}
+
+function entrecomillar(trozos) {
+    return trozos.map(function (trozo) { return "«" + trozo + "»"; });
+}
+
+function criterioTexto(pedido, cual, donde) {
+    /* cómo se lee en voz alta lo que se ha pedido en un campo de texto */
+    if (cual === "exacto") { return "«" + pedido + "» entero " + donde; }
+    var trozos = entrecomillar(terminos(pedido));
+    if (trozos.length < 2) { return trozos.join("") + " " + donde; }
+    if (cual === "algunos") { return enumerar(trozos, "o") + " " + donde; }
+    return enumerar(trozos) + " " + donde;
+}
+
+function criterioAños(pedidos) {
+    /* nada que decir mientras no se acote el archivo */
+    var abre = pedidos.desde > pedidos.minimo;
+    var cierra = pedidos.hasta < pedidos.maximo;
+    if (!abre && !cierra) { return ""; }
+    if (pedidos.desde === pedidos.hasta) { return "de " + pedidos.desde; }
+    if (!cierra) { return "de " + pedidos.desde + " en adelante"; }
+    if (!abre) { return "hasta " + pedidos.hasta; }
+    return "de " + pedidos.desde + " a " + pedidos.hasta;
+}
+
+function criteriosDe(pedidos) {
+    /* lo que se ha pedido, en palabras; si no sale nada, es que no se pide */
+    var criterios = [];
+    if (pedidos.titulo) {
+        criterios.push(criterioTexto(pedidos.titulo, pedidos.variante,
+                                     "en el título"));
+    }
+    if (pedidos.autor) {
+        criterios.push(criterioTexto(pedidos.autor, pedidos.varianteautor,
+                                     "en la firma"));
+    }
+    if (pedidos.seccion) {
+        criterios.push("de la sección «" + pedidos.seccion + "»");
+    }
+    var años = criterioAños(pedidos);
+    if (años) { criterios.push(años); }
+    return criterios;
+}
+
+function filtroAvanzado(pedidos) {
+    /* una prueba por campo relleno, y el artículo ha de pasarlas todas */
+    var pruebas = [];
+    var porTitulo = pruebaDe(pedidos.titulo, pedidos.variante);
+    if (porTitulo) {
+        var titulos = claves("articulos");
+        pruebas.push(function (i) { return porTitulo(titulos[i]); });
+    }
+    var porAutor = pruebaDe(pedidos.autor, pedidos.varianteautor);
+    if (porAutor) {
+        var quienes = firmas();
+        pruebas.push(function (i) {
+            return algunaFirma(quienes[i], porAutor);
+        });
+    }
+    if (pedidos.seccion) {
+        pruebas.push(function (i) {
+            var tanda = BUSQUEDA.articulos[i][2];
+            return tanda >= 0 && BUSQUEDA.rotulos[tanda] === pedidos.seccion;
+        });
+    }
+    pruebas.push(function (i) {
+        var año = BUSQUEDA.años[BUSQUEDA.articulos[i][1]];
+        return año >= pedidos.desde && año <= pedidos.hasta;
+    });
+    return function (i) {
+        for (var k = 0; k < pruebas.length; k++) {
+            if (!pruebas[k](i)) { return false; }
+        }
+        return true;
+    };
+}
+
+function contarAvanzada(total, criterios) {
+    /* como en la búsqueda sencilla, pero enumerando todo lo pedido */
+    var lista = enumerar(criterios);
+    if (total === 0) { return "Ningún artículo cumple lo pedido: " + lista + "."; }
+    if (total === 1) { return "Un artículo cumple lo pedido: " + lista + "."; }
+    return total + " artículos cumplen lo pedido: " + lista + ".";
+}
+
+function buscarAvanzada() {
+    var pedidos = loPedido();
+    rellenarFormulario(pedidos);
+
+    var cuenta = document.getElementById("cuenta");
+    var resultados = document.getElementById("resultados");
+    var criterios = criteriosDe(pedidos);
+    if (!criterios.length) {
+        cuenta.textContent = "Rellena algún campo y pulsa «Buscar».";
+        resultados.innerHTML = "";
+        return;
+    }
+
+    /* el título de la pestaña ya dice qué se busca aquí */
+    var rotulo = pedidos.titulo || pedidos.autor || pedidos.seccion;
+    if (rotulo) { document.title = rotulo + " - " + document.title; }
+    var hallado = conFiltro(filtroAvanzado(pedidos));
+    cuenta.textContent = contarAvanzada(hallado.total, criterios);
+    resultados.innerHTML = hallado.html;
+}
+
 /* Qué se busca en cada página de resultados, que ella misma dice cuál es. */
 var MODOS = {
     articulos: { uno: "artículo", varios: "artículos", en: "en el título",
@@ -2283,6 +2549,16 @@ function contar(total, pedidos, modo) {
 }
 
 function buscar() {
+    /* la página de resultados dice de qué búsqueda es */
+    var resultados = document.getElementById("resultados");
+    if (resultados.getAttribute("data-busca") === "avanzada") {
+        buscarAvanzada();
+    } else {
+        buscarSencilla();
+    }
+}
+
+function buscarSencilla() {
     var pedido = loQuePiden().trim();
     var casilla = document.querySelector(".buscar input");
     if (casilla) { casilla.value = pedido; }
@@ -2689,6 +2965,7 @@ def botones_indices(carpeta, salvo=None):
         ("Secciones", RUTA_SECCIONES),
         ("Autores", RUTA_AUTORES),
         ("Estadísticas", NOMBRE_ESTADISTICAS),
+        ("Búsqueda avanzada", NOMBRE_AVANZADA),
     ]
     return [
         boton_web(rotulo, enlace_desde(destino, carpeta))
@@ -3516,7 +3793,7 @@ def datos_autor(autor):
     return datos
 
 
-def indice_busqueda(numeros, autores, opciones, indices):
+def indice_busqueda(numeros, secciones, autores, opciones, indices):
     """El índice que el navegador recorre al buscar, listo para servirlo.
 
     Va como guion y no como JSON porque el sitio también se abre con un doble
@@ -3527,19 +3804,29 @@ def indice_busqueda(numeros, autores, opciones, indices):
     """
     encabezados, tandas, firmas, articulos = [], {}, {}, []
     for volumen, numero in numeros:
-        secciones = secciones_del_numero(numero)
+        # el nombre del parámetro está cogido: aquí son los dueños de cada uno
+        duenos = secciones_del_numero(numero)
         encabezados.append(encabezado_numero(volumen, numero, ""))
         for articulo in articulos_de(numero["articulos"]):
-            seccion = secciones.get(id(articulo))
+            seccion = duenos.get(id(articulo))
             datos = datos_articulo(articulo, opciones, firmas, indices)
             datos[1] = len(encabezados) - 1
             datos[2] = tandas.setdefault(seccion, len(tandas)) if seccion else -1
             articulos.append(datos)
 
+    # el nombre de cada sección tal como lo lista su índice, para el
+    # desplegable de la búsqueda avanzada
+    canonicos = {
+        clave_indice(seccion["nombre"]): seccion["nombre"] for seccion in secciones
+    }
     datos = {
         "externa": bool(opciones.externa),
         "numeros": encabezados,
+        "años": [volumen["año"] for volumen, _ in numeros],
         "secciones": [encabezado_seccion(nombre, "", 3, indices) for nombre in tandas],
+        "rotulos": [
+            canonicos.get(clave_indice(nombre), nombre) for nombre in tandas
+        ],
         "firmas": [[nombre, pagina] for nombre, pagina in firmas],
         "articulos": articulos,
         "autores": [datos_autor(autor) for autor in autores],
@@ -3572,6 +3859,90 @@ def pagina_busqueda(autores=False):
     )
     titulo = "Búsqueda de autores" if autores else "Búsqueda"
     return envolver_pagina(titulo, cuerpo, "")
+
+
+def casillas_variante(nombre):
+    """Los tres botones que dicen cómo se casa lo pedido en un campo."""
+    return '<span class="variantes">%s</span>' % "".join(
+        '<label><input type="radio" name="%s" value="%s"%s>%s</label>'
+        % (nombre, valor, " checked" if valor == VARIANTE else "", rotulo)
+        for valor, rotulo in VARIANTES
+    )
+
+
+def opciones_seccion(secciones):
+    """El desplegable de secciones, por orden alfabético y con hueco vacío."""
+    nombres = sorted(
+        (seccion["nombre"] for seccion in secciones),
+        key=lambda nombre: sin_tildes(clave_indice(nombre)),
+    )
+    return '<option value="">Todas</option>' + "".join(
+        "<option>%s</option>" % escapar_html(nombre) for nombre in nombres
+    )
+
+
+def formulario_avanzada(secciones, desde, hasta):
+    """El formulario de la búsqueda avanzada: cinco campos y un botón.
+
+    Los años vienen con el archivo entero puesto, que es lo que se busca
+    mientras no se acoten; el guion los lee de ahí y no necesita saberlos.
+    """
+    return """<form class="avanzada" action="%(pagina)s" method="get" role="search">
+<label for="titulo">Título</label>
+<div class="valor">
+<input type="search" id="titulo" name="%(q)s">
+%(variante)s
+</div>
+<label for="autor">Autor</label>
+<div class="valor">
+<input type="search" id="autor" name="%(autor)s">
+%(varianteautor)s
+</div>
+<label for="seccion">Sección</label>
+<div class="valor">
+<select id="seccion" name="%(nombreseccion)s">%(secciones)s</select>
+</div>
+<label for="desde">Años</label>
+<div class="valor">
+<input type="number" id="desde" name="%(desde)s" min="%(min)d" max="%(max)d" step="1" value="%(min)d">
+<span>a</span>
+<input type="number" id="hasta" name="%(hasta)s" min="%(min)d" max="%(max)d" step="1" value="%(max)d">
+</div>
+<div class="valor botones"><button>Buscar</button></div>
+</form>""" % {
+        "pagina": enlace_web(NOMBRE_AVANZADA),
+        "q": PARAMETRO_BUSQUEDA,
+        "variante": casillas_variante(PARAMETRO_VARIANTE),
+        "autor": PARAMETRO_AUTOR,
+        "varianteautor": casillas_variante(PARAMETRO_VARIANTE_AUTOR),
+        "nombreseccion": PARAMETRO_SECCION,
+        "secciones": opciones_seccion(secciones),
+        "desde": PARAMETRO_DESDE,
+        "hasta": PARAMETRO_HASTA,
+        "min": desde,
+        "max": hasta,
+    }
+
+
+def pagina_avanzada(secciones, numeros, opciones):
+    """La búsqueda avanzada: el formulario arriba y lo hallado debajo.
+
+    El formulario se manda a esta misma página, así que lo pedido se queda a
+    la vista y puede retocarse sin volver atrás.
+    """
+    años = [volumen["año"] for volumen, _ in numeros]
+    cuerpo = """%s
+%s
+<p class="cuenta" id="cuenta">Hace falta JavaScript para buscar.</p>
+<div id="resultados" data-busca="avanzada"></div>
+<script src="%s"></script>
+<script src="%s"></script>""" % (
+        barra_navegacion(botones_indices("", salvo=NOMBRE_AVANZADA), ""),
+        formulario_avanzada(secciones, min(años), max(años)),
+        enlace_web(NOMBRE_INDICE),
+        enlace_web(NOMBRE_BUSCADOR),
+    )
+    return envolver_pagina("Búsqueda avanzada", cuerpo, "")
 
 
 def ruta_del_sitio(nombre, opciones):
@@ -3769,10 +4140,13 @@ def generar_web(opciones):
     escribir_web(NOMBRE_TEMA, guion_tema(), opciones)
     escribir_web(NOMBRE_BUSQUEDA, pagina_busqueda(), opciones)
     escribir_web(NOMBRE_BUSQUEDA_AUTORES, pagina_busqueda(True), opciones)
+    escribir_web(
+        NOMBRE_AVANZADA, pagina_avanzada(secciones, numeros, opciones), opciones
+    )
     escribir_web(NOMBRE_BUSCADOR, BUSCADOR, opciones)
     escribir_web(
         NOMBRE_INDICE,
-        indice_busqueda(numeros, autores, opciones, indices),
+        indice_busqueda(numeros, secciones, autores, opciones, indices),
         opciones,
     )
 
