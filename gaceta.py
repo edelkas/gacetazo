@@ -1810,7 +1810,7 @@ body {
 
 /* el hueco de la derecha es para los botones de la esquina, que en
    pantalla estrecha caen justo encima del titular */
-h1 { font-size: 1.6rem; margin-bottom: 1rem; padding-right: 4.5rem; }
+h1 { font-size: 1.6rem; margin-bottom: 1rem; padding-right: 12.5rem; }
 
 /* barra de saltos a cada volumen */
 .volumenes { margin-bottom: 1.5rem; line-height: 2; }
@@ -1838,7 +1838,7 @@ td img { display: block; height: 118px; object-fit: cover; width: 84px; }
 
 /* --- página de un número ------------------------------------------- */
 
-.navegacion { line-height: 2.2; margin-bottom: 1.5rem; }
+.navegacion { line-height: 1.25; margin-bottom: 1.5rem; }
 .navegacion a, .navegacion span {
     border: 1px solid var(--marco);
     border-radius: 3px;
@@ -1971,7 +1971,7 @@ h1 a:hover, h2 a:hover, h3 a:hover { text-decoration: underline; }
 .avanzada .variantes label { align-items: center; display: flex; gap: 0.25rem; }
 .avanzada .variantes input { border: none; padding: 0; }
 
-/* --- la esquina: el tema y el repositorio ---------------------------- */
+/* --- la esquina: los atajos y el tema ---------------------------- */
 
 .esquina {
     display: flex;
@@ -2012,13 +2012,29 @@ TEMA = r"""/* Generado por gaceta.py; los cambios a mano se pierden al rehacer e
 
 var CLAVE_TEMA = "tema";
 var REPOSITORIO = "%(repositorio)s";
+var REVISTA = "%(revista)s";
+
+function raiz() {
+    /* la raíz del sitio vista desde aquí, que lo dice el src de este guion */
+    var guion = document.currentScript;
+    var src = guion ? guion.getAttribute("src") : "";
+    return src.slice(0, Math.max(0, src.length - "%(tema)s".length));
+}
+
+var RAIZ = raiz();
+var ESTADISTICAS = RAIZ + "%(estadisticas)s";
+var AVANZADA = RAIZ + "%(avanzada)s";
 /* con file:// cada página tiene su propio almacén y no se enteran unas de
    otras, así que el tema tiene que viajar con los enlaces */
 var SUELTAS = location.protocol === "file:";
 
-/* Octicons (MIT): moon-24, sun-24 y mark-github-24 */
+/* Octicons (MIT): moon-24, sun-24, graph-24, search-24, home-24 y
+   mark-github-24 */
 var LUNA = '<svg class="luna" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.768 3.96v.001l-.002-.005a9.08 9.08 0 0 0-.218-.779c-.13-.394.21-.8.602-.67.29.096.575.205.855.328l.01.005A10.002 10.002 0 0 1 12 22a10.002 10.002 0 0 1-9.162-5.985l-.004-.01a9.722 9.722 0 0 1-.329-.855c-.13-.392.277-.732.67-.602.257.084.517.157.78.218l.004.002A9 9 0 0 0 14.999 6a9.09 9.09 0 0 0-.231-2.04ZM16.5 6c0 5.799-4.701 10.5-10.5 10.5-.426 0-.847-.026-1.26-.075A8.5 8.5 0 1 0 16.425 4.74c.05.413.075.833.075 1.259Z"/></svg>';
 var SOL = '<svg class="sol" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19a7 7 0 1 1 0-14 7 7 0 0 1 0 14Zm0-1.5a5.5 5.5 0 1 0 0-11 5.5 5.5 0 1 0 0 11Zm-5.657.157a.75.75 0 0 1 0 1.06l-1.768 1.768a.749.749 0 0 1-1.275-.326.749.749 0 0 1 .215-.734l1.767-1.768a.75.75 0 0 1 1.061 0ZM3.515 3.515a.75.75 0 0 1 1.06 0l1.768 1.768a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L3.515 4.575a.75.75 0 0 1 0-1.06ZM12 0a.75.75 0 0 1 .75.75v2.5a.75.75 0 0 1-1.5 0V.75A.75.75 0 0 1 12 0ZM4 12a.75.75 0 0 1-.75.75H.75a.75.75 0 0 1 0-1.5h2.5A.75.75 0 0 1 4 12Zm8 8a.75.75 0 0 1 .75.75v2.5a.75.75 0 0 1-1.5 0v-2.5A.75.75 0 0 1 12 20Zm12-8a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h2.5A.75.75 0 0 1 24 12Zm-6.343 5.657a.75.75 0 0 1 1.06 0l1.768 1.768a.751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018l-1.768-1.767a.75.75 0 0 1 0-1.061Zm2.828-14.142a.75.75 0 0 1 0 1.06l-1.768 1.768a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042l1.767-1.768a.75.75 0 0 1 1.061 0Z"/></svg>';
+var GRAFICO = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 2.75a.75.75 0 0 0-1.5 0v18.5c0 .414.336.75.75.75H20a.75.75 0 0 0 0-1.5H2.5V2.75Z"/><path d="M22.28 7.78a.75.75 0 0 0-1.06-1.06l-5.72 5.72-3.72-3.72a.75.75 0 0 0-1.06 0l-6 6a.75.75 0 1 0 1.06 1.06l5.47-5.47 3.72 3.72a.75.75 0 0 0 1.06 0l6.25-6.25Z"/></svg>';
+var LUPA = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.25 2a8.25 8.25 0 0 1 6.34 13.53l5.69 5.69a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215l-5.69-5.69A8.25 8.25 0 1 1 10.25 2ZM3.5 10.25a6.75 6.75 0 1 0 13.5 0 6.75 6.75 0 0 0-13.5 0Z"/></svg>';
+var CASA = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11.03 2.59a1.501 1.501 0 0 1 1.94 0l7.5 6.363a1.5 1.5 0 0 1 .53 1.144V19.5a1.5 1.5 0 0 1-1.5 1.5h-5.75a.75.75 0 0 1-.75-.75V14h-2v6.25a.75.75 0 0 1-.75.75H4.5A1.5 1.5 0 0 1 3 19.5v-9.403c0-.44.194-.859.53-1.144ZM12 3.734l-7.5 6.363V19.5h5v-6.25a.75.75 0 0 1 .75-.75h3.5a.75.75 0 0 1 .75.75v6.25h5v-9.403Z"/></svg>';
 var GITHUB = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.226 17.284c-2.965-.36-5.054-2.493-5.054-5.256 0-1.123.404-2.336 1.078-3.144-.292-.741-.247-2.314.09-2.965.898-.112 2.111.36 2.83 1.01.853-.269 1.752-.404 2.853-.404 1.1 0 1.999.135 2.807.382.696-.629 1.932-1.1 2.83-.988.315.606.36 2.179.067 2.942.72.854 1.101 2 1.101 3.167 0 2.763-2.089 4.852-5.098 5.234.763.494 1.28 1.572 1.28 2.807v2.336c0 .674.561 1.056 1.235.786 4.066-1.55 7.255-5.615 7.255-10.646C23.5 6.188 18.334 1 11.978 1 5.62 1 .5 6.188.5 12.545c0 4.986 3.167 9.12 7.435 10.669.606.225 1.19-.18 1.19-.786V20.63a2.9 2.9 0 0 1-1.078.224c-1.483 0-2.359-.808-2.987-2.313-.247-.607-.517-.966-1.034-1.033-.27-.023-.359-.135-.359-.27 0-.27.45-.471.898-.471.652 0 1.213.404 1.797 1.235.45.651.921.943 1.483.943.561 0 .92-.202 1.437-.719.382-.381.674-.718.944-.943"/></svg>';
 
 function apuntado() {
@@ -2106,15 +2122,23 @@ var TRAIDO = deLaDireccion();
 if (TRAIDO) { apuntar(TRAIDO); }
 poner(TRAIDO || apuntado() || (preferido() ? "oscuro" : "claro"));
 
+function atajo(destino, rotulo, icono, fuera) {
+    /* un enlace de la esquina: sólo el icono, y el rótulo al posarse encima */
+    return '<a href="' + destino + '" title="' + rotulo + '" aria-label="'
+        + rotulo + '"' + (fuera ? ' target="_blank" rel="noopener"' : "")
+        + ">" + icono + "</a>";
+}
+
 function esquina() {
-    /* los botones los pone el guion y no cada página: son tres iconos que
+    /* los botones los pone el guion y no cada página: son seis iconos que
        ocupan más que todo esto, y así no viajan mil veces */
     var caja = document.createElement("div");
     caja.className = "esquina";
-    caja.innerHTML = '<button class="tema" type="button">' + LUNA + SOL
-        + '</button><a class="repo" href="' + REPOSITORIO
-        + '" title="El repositorio en GitHub"'
-        + ' aria-label="El repositorio en GitHub">' + GITHUB + "</a>";
+    caja.innerHTML = atajo(ESTADISTICAS, "Las estadísticas", GRAFICO)
+        + atajo(AVANZADA, "La búsqueda avanzada", LUPA)
+        + atajo(REVISTA, "La Gaceta en la RSME", CASA, true)
+        + '<button class="tema" type="button">' + LUNA + SOL + "</button>"
+        + atajo(REPOSITORIO, "El repositorio en GitHub", GITHUB, true);
     document.body.insertBefore(caja, document.body.firstChild);
     caja.querySelector(".tema").addEventListener("click", function () {
         var cual = esOscuro() ? "claro" : "oscuro";
@@ -3838,7 +3862,13 @@ def indice_busqueda(numeros, secciones, autores, opciones, indices):
 
 def guion_tema():
     """El guion que pone el tema y los botones de la esquina."""
-    return TEMA % {"repositorio": URL_REPOSITORIO}
+    return TEMA % {
+        "repositorio": URL_REPOSITORIO,
+        "revista": URL_BASE,
+        "tema": NOMBRE_TEMA,
+        "estadisticas": enlace_web(NOMBRE_ESTADISTICAS),
+        "avanzada": enlace_web(NOMBRE_AVANZADA),
+    }
 
 
 def pagina_busqueda(autores=False):

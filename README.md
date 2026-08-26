@@ -418,13 +418,21 @@ Lo pedido viaja en la dirección
 guardarse o pasarse a otro; al abrirla, el guion repone el formulario, que el
 navegador no lo hace solo.
 
-### Modo oscuro
+### La esquina y el modo oscuro
 
-Arriba a la derecha, ancladas a la esquina y siempre a la vista, van dos
-botones: una media luna que enciende el modo oscuro —y que entonces se vuelve
-un sol para deshacerlo— y el logotipo de GitHub, que lleva al repositorio. Los
-iconos son de [Octicons](https://primer.style/octicons/) (`moon-24`, `sun-24` y
-`mark-github-24`, con licencia MIT), incrustados como SVG.
+Arriba a la derecha, ancladas a la esquina y siempre a la vista, van cinco
+botones sin más rótulo que el icono, que se lee al posarse encima: las
+estadísticas, la búsqueda avanzada, la revista —en una pestaña aparte—, el modo
+oscuro —una media luna, que se vuelve un sol para deshacerlo— y el repositorio
+en GitHub, también aparte.
+
+Los iconos son de [Octicons](https://primer.style/octicons/) (`graph-24`,
+`search-24`, `home-24`, `moon-24`, `sun-24` y `mark-github-24`, con licencia
+MIT), incrustados como SVG.
+
+Los dos atajos internos han de apuntar a la raíz del sitio, que desde la página
+de un número queda tres carpetas más arriba; `tema.js` la deduce de su propio
+`src`, que es lo único que sabe dónde está.
 
 La paleta entera vive en un puñado de variables CSS al principio de
 `estilo.css`, y el tema oscuro no hace más que redefinirlas:
@@ -453,7 +461,7 @@ dentro de la página, ni los enlaces a la revista; y en un servidor no se toca
 nada, que las direcciones se quedan limpias.
 
 Los botones también los pone `tema.js`, en vez de venir en cada página: los
-tres iconos ocupan más de dos kilobytes, y así viajan una sola vez y no mil
+seis iconos ocupan más de tres kilobytes, y así viajan una sola vez y no mil
 trescientas.
 
 ### Web para publicar
