@@ -1945,10 +1945,18 @@ h1 a:hover, h2 a:hover, h3 a:hover { text-decoration: underline; }
 # El tema se elige en el navegador y se recuerda allí mismo: el sitio es
 # estático y no tiene dónde apuntarlo. El guion va en la cabecera de cada
 # página para que el color quede puesto antes de pintar nada.
-TEMA = """/* Generado por gaceta.py; los cambios a mano se pierden al rehacer el sitio. */
+#
+# Colgado de un servidor, el almacén del navegador lo comparten todas las
+# páginas del sitio y con eso basta. Abierto con un doble clic, en cambio,
+# cada fichero es un origen distinto y tiene el suyo propio, así que allí el
+# tema viaja además pegado a los enlaces.
+TEMA = r"""/* Generado por gaceta.py; los cambios a mano se pierden al rehacer el sitio. */
 
 var CLAVE_TEMA = "tema";
 var REPOSITORIO = "%(repositorio)s";
+/* con file:// cada página tiene su propio almacén y no se enteran unas de
+   otras, así que el tema tiene que viajar con los enlaces */
+var SUELTAS = location.protocol === "file:";
 
 /* Octicons (MIT): moon-24, sun-24 y mark-github-24 */
 var LUNA = '<svg class="luna" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.768 3.96v.001l-.002-.005a9.08 9.08 0 0 0-.218-.779c-.13-.394.21-.8.602-.67.29.096.575.205.855.328l.01.005A10.002 10.002 0 0 1 12 22a10.002 10.002 0 0 1-9.162-5.985l-.004-.01a9.722 9.722 0 0 1-.329-.855c-.13-.392.277-.732.67-.602.257.084.517.157.78.218l.004.002A9 9 0 0 0 14.999 6a9.09 9.09 0 0 0-.231-2.04ZM16.5 6c0 5.799-4.701 10.5-10.5 10.5-.426 0-.847-.026-1.26-.075A8.5 8.5 0 1 0 16.425 4.74c.05.413.075.833.075 1.259Z"/></svg>';
@@ -1964,6 +1972,54 @@ function apuntar(cual) {
     try { localStorage.setItem(CLAVE_TEMA, cual); } catch (error) { /* nada */ }
 }
 
+function deLaDireccion() {
+    /* el tema que traiga el enlace por el que se ha llegado */
+    var trae = new URLSearchParams(location.search).get(CLAVE_TEMA);
+    return trae === "claro" || trae === "oscuro" ? trae : null;
+}
+
+function conTema(destino, cual) {
+    /* la misma dirección, con el tema puesto (o cambiado, si ya lo llevaba) */
+    var partes = destino.split("#");
+    var trozos = partes[0].split("?");
+    var consulta = (trozos[1] || "").split("&").filter(function (par) {
+        return par && par.indexOf(CLAVE_TEMA + "=") !== 0;
+    });
+    consulta.push(CLAVE_TEMA + "=" + cual);
+    var camino = trozos[0] + "?" + consulta.join("&");
+    return partes.length > 1 ? camino + "#" + partes[1] : camino;
+}
+
+function interna(destino) {
+    /* una página del sitio: ni un PDF, ni un ancla, ni la revista */
+    return destino && /\.html($|[?#])/.test(destino) && !/^[a-z]+:/i.test(destino);
+}
+
+function propagar(cual) {
+    /* el tema, a todos los enlaces y al buscador de esta página */
+    if (!SUELTAS) { return; }
+    var enlaces = document.getElementsByTagName("a");
+    for (var i = 0; i < enlaces.length; i++) {
+        var destino = enlaces[i].getAttribute("href");
+        if (interna(destino)) {
+            enlaces[i].setAttribute("href", conTema(destino, cual));
+        }
+    }
+    /* el formulario rehace la consulta al enviarse, y se llevaría por delante
+       lo que hubiera en la dirección; el tema va en un campo escondido */
+    var formularios = document.getElementsByClassName("buscar");
+    for (var j = 0; j < formularios.length; j++) {
+        var campo = formularios[j].querySelector("input[name=" + CLAVE_TEMA + "]");
+        if (!campo) {
+            campo = document.createElement("input");
+            campo.type = "hidden";
+            campo.name = CLAVE_TEMA;
+            formularios[j].appendChild(campo);
+        }
+        campo.value = cual;
+    }
+}
+
 function preferido() {
     /* a falta de elección, la del sistema */
     return window.matchMedia
@@ -1976,6 +2032,7 @@ function esOscuro() {
 
 function poner(cual) {
     document.documentElement.setAttribute("data-tema", cual);
+    propagar(cual);
     var boton = document.querySelector(".esquina .tema");
     if (boton) {
         var rotulo = cual === "oscuro" ? "Volver al modo claro"
@@ -1985,7 +2042,10 @@ function poner(cual) {
     }
 }
 
-poner(apuntado() || (preferido() ? "oscuro" : "claro"));
+/* manda lo que traiga el enlace, y de paso se apunta aquí */
+var TRAIDO = deLaDireccion();
+if (TRAIDO) { apuntar(TRAIDO); }
+poner(TRAIDO || apuntado() || (preferido() ? "oscuro" : "claro"));
 
 function esquina() {
     /* los botones los pone el guion y no cada página: son tres iconos que

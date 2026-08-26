@@ -374,6 +374,16 @@ parpadee. A falta de elección previa hace caso al sistema
 donde apuntarlo. Si el navegador no lo deja —en una ventana privada, por
 ejemplo—, el botón sigue funcionando, sólo que sin memoria.
 
+Colgado de un servidor eso basta: el almacén es del sitio entero, así que lo
+elegido en una página vale para todas. Abierto con un doble clic no, porque
+`file://` hace de cada fichero un origen distinto y le da a cada uno su propio
+almacén: cambiar el tema en un número no se notaba en los demás. Así que ahí
+el tema viaja además pegado a los enlaces —`tema.js` añade `?tema=oscuro` a los
+que llevan a otra página del sitio, y un campo escondido al buscador— y lo que
+trae el enlace manda sobre lo apuntado. No se tocan los PDF, ni los saltos
+dentro de la página, ni los enlaces a la revista; y en un servidor no se toca
+nada, que las direcciones se quedan limpias.
+
 Los botones también los pone `tema.js`, en vez de venir en cada página: los
 tres iconos ocupan más de dos kilobytes, y así viajan una sola vez y no mil
 trescientas.
@@ -585,5 +595,6 @@ sección. Hoy el archivo completo se analiza sin un solo aviso.
 - [x] Web local: búsqueda de artículos por título y de autores por nombre, en
       el navegador, con varios términos a la vez.
 - [x] Publicación en GitHub Pages desde una rama aparte.
-- [x] Web local: modo oscuro, con botón en la esquina y enlace al repositorio.
+- [x] Web local: modo oscuro para todo el sitio, con botón en la esquina y
+      enlace al repositorio.
 - [x] Miniaturas de las portadas para el índice, con Pillow.
