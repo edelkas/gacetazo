@@ -167,6 +167,7 @@ estilo.css
 tema.js                           <- el modo oscuro y los botones de la esquina
 buscar.html                       <- resultados de la búsqueda
 buscar-autores.html               <- y los de la búsqueda de autores
+estadisticas.html                 <- tres tablas con las cuentas del archivo
 numeros/vol.29-2026/1/            <- una carpeta por número, con su index.html
 secciones/index.html              <- índice de secciones
 secciones/Editorial.html          <- una página por sección
@@ -184,11 +185,17 @@ está descargada (y su nombre si no), enlazada a la página del número. Encima,
 una barra de saltos a cada volumen, esta en orden natural.
 
 La página de cada número lleva su título (volumen, año, número y nombre, si lo
-tiene), que enlaza a la página que la revista le dedica; una barra para
-recorrer el archivo de número en número (índice, primero, anterior, siguiente y
-último; los extremos salen apagados) y, a la derecha, la portada en grande con
-el enlace al ejemplar completo —el descargado, o el de la revista si no está— y
-al «Acerca de la portada».
+tiene), que enlaza a la página que la revista le dedica; dos barras de
+navegación y, a la derecha, la portada en grande con el enlace al ejemplar
+completo —el descargado, o el de la revista si no está— y al «Acerca de la
+portada».
+
+Las barras van así en las tres clases de página suelta —la de un número, la de
+una sección y la de un autor—, que con todo junto se hacían interminables:
+arriba los botones generales (los tres índices, las estadísticas y el
+buscador), y debajo el recorrido de la serie (primero, anterior, siguiente y
+último; los extremos salen apagados). Las páginas de índice, que no recorren
+nada, se quedan con una sola barra.
 
 A la izquierda, el índice del número reproduce el árbol del mapa: un
 encabezado por sección y subsección —las de primer nivel enlazan a su página
@@ -304,6 +311,33 @@ deduzca, y las firmas que no aparezcan en el archivo se ignoran. Sirve tanto
 para reunir lo que las reglas no ven como para desempatar una firma corta que
 encaja en dos personas distintas: *José Carrillo* podría ser *José Carrillo
 Yáñez* o *José A. Carrillo*, y sin la tabla se quedaría aparte.
+
+### Estadísticas
+
+`estadisticas.html` resume el archivo en tres tablas, y la barra de navegación
+de todas las páginas lleva un botón que salta a ella.
+
+La primera, «Datos generales», son las cuentas gordas: volúmenes, números,
+secciones, autores, artículos y firmas. La segunda, «Autores más prolíficos»,
+todos los que llegan a diez artículos, de más a menos y con el nombre enlazado
+a su página; a igualdad de artículos manda el orden alfabético. La tercera,
+«Distribución de autores», reparte a los autores por cuántos artículos han
+publicado, de uno en adelante y saltándose las cantidades que no ha alcanzado
+nadie:
+
+```
+Artículos   Autores
+        1       825
+        2       189
+        3        57
+      ...
+      156         1
+```
+
+Las cuentas salen del mismo mapa que el resto del sitio, y un artículo firmado
+por tres personas suma uno en «Artículos» y tres en «Firmas», una por cada
+autor. De ahí que las firmas (2326) pasen de los artículos (1964), y que
+multiplicando las dos columnas de la tercera tabla salgan las firmas.
 
 ### Búsqueda
 
@@ -598,3 +632,4 @@ sección. Hoy el archivo completo se analiza sin un solo aviso.
 - [x] Web local: modo oscuro para todo el sitio, con botón en la esquina y
       enlace al repositorio.
 - [x] Miniaturas de las portadas para el índice, con Pillow.
+- [x] Web local: página de estadísticas con las cuentas del archivo.

@@ -45,9 +45,12 @@ NOMBRE_ESTILO = "estilo.css"
 NOMBRE_NOJEKYLL = ".nojekyll"
 NOMBRE_BUSQUEDA = "buscar.html"
 NOMBRE_BUSQUEDA_AUTORES = "buscar-autores.html"
+NOMBRE_ESTADISTICAS = "estadisticas.html"
 NOMBRE_INDICE = "busqueda.js"
 NOMBRE_BUSCADOR = "buscador.js"
 NOMBRE_TEMA = "tema.js"
+# a partir de cuántos artículos sale un autor en la tabla de los prolíficos
+PROLIFICOS = 10
 # el botón de la esquina lleva aquí
 URL_REPOSITORIO = "https://github.com/edelkas/rsme"
 # el nombre con que el formulario manda lo que se busca, y que lee buscador.js
@@ -1833,6 +1836,8 @@ td img { display: block; height: 118px; object-fit: cover; width: 84px; }
 }
 .navegacion a:hover { background: var(--realce); }
 .navegacion span { border-color: var(--apagado-marco); color: var(--apagado); }  /* extremo del archivo */
+/* la de los saltos de página va debajo de la de los índices, y juntas */
+.navegacion.paginas { margin-top: -1rem; }
 
 .numero { align-items: flex-start; display: flex; gap: 2rem; }
 .contenido { flex: 1 1 20rem; }
@@ -1892,6 +1897,16 @@ h1 a:hover, h2 a:hover, h3 a:hover { text-decoration: underline; }
 }
 .letras a:hover { background: var(--realce); }
 .letras span { border-color: var(--apagado-marco); color: var(--apagado); }  /* letra sin autores */
+
+/* --- estadísticas ---------------------------------------------------- */
+
+/* una tabla estrecha: dos columnas y ni una línea larga */
+.estadisticas { margin-bottom: 2rem; min-width: 20rem; }
+.estadisticas th, .estadisticas td { padding: 0.3rem 0.8rem; }
+.estadisticas thead th { background: var(--realce); font-weight: 600; }
+.estadisticas .nombre { text-align: left; }
+.estadisticas .valor { text-align: right; }
+.estadisticas td a { display: inline; }
 
 /* --- buscador -------------------------------------------------------- */
 
@@ -2648,12 +2663,32 @@ def barra_navegacion(botones, carpeta, autores=False):
     )
 
 
+def barra_paginas(botones):
+    """La segunda barra de las páginas sueltas: sólo los saltos, sin buscador.
+
+    Los botones generales se acumulaban con los del recorrido y la barra se
+    hacía interminable, así que van cada tanda en la suya.
+    """
+    return '<div class="navegacion paginas">%s</div>' % "\n".join(botones)
+
+
+def botones_recorrido(salto, posicion, cuantos):
+    """Primero, anterior, siguiente y último, para recorrer una serie."""
+    return [
+        boton_web("« Primero", salto(0)),
+        boton_web("‹ Anterior", salto(posicion - 1)),
+        boton_web("Siguiente ›", salto(posicion + 1)),
+        boton_web("Último »", salto(cuantos - 1)),
+    ]
+
+
 def botones_indices(carpeta, salvo=None):
-    """Botones a los tres índices; se calla el de la página en la que se está."""
+    """Botones a los índices y a las cuentas; se calla el de la propia página."""
     indices = [
         ("Números", NOMBRE_PAGINA),
         ("Secciones", RUTA_SECCIONES),
         ("Autores", RUTA_AUTORES),
+        ("Estadísticas", NOMBRE_ESTADISTICAS),
     ]
     return [
         boton_web(rotulo, enlace_desde(destino, carpeta))
@@ -2670,20 +2705,17 @@ def boton_web(rotulo, destino=None):
 
 
 def navegacion_numero(numeros, posicion, carpeta):
-    """Botones para recorrer el archivo de número en número."""
+    """Las dos barras: arriba los índices, debajo el recorrido del archivo."""
 
     def salto(indice):
         if indice == posicion or not 0 <= indice < len(numeros):
             return None
         return enlace_desde(ruta_pagina_numero(*numeros[indice]), carpeta)
 
-    botones = botones_indices(carpeta) + [
-        boton_web("« Primero", salto(0)),
-        boton_web("‹ Anterior", salto(posicion - 1)),
-        boton_web("Siguiente ›", salto(posicion + 1)),
-        boton_web("Último »", salto(len(numeros) - 1)),
-    ]
-    return barra_navegacion(botones, carpeta)
+    return "%s\n%s" % (
+        barra_navegacion(botones_indices(carpeta), carpeta),
+        barra_paginas(botones_recorrido(salto, posicion, len(numeros))),
+    )
 
 
 def columna_portada(volumen, numero, carpeta, opciones):
@@ -2896,21 +2928,16 @@ def pagina_seccion(secciones, posicion, opciones, indices=None):
     carpeta = posixpath.dirname(seccion["pagina"])
 
     def salto(indice):
-        if not 0 <= indice < len(secciones):
+        if indice == posicion or not 0 <= indice < len(secciones):
             return None
         return enlace_desde(secciones[indice]["pagina"], carpeta)
 
-    navegacion = barra_navegacion(
-        botones_indices(carpeta)
-        + [
-            boton_web("‹ Anterior", salto(posicion - 1)),
-            boton_web("Siguiente ›", salto(posicion + 1)),
-        ],
-        carpeta,
-    )
-
     tandas = list(reversed(seccion["tandas"]))
-    trozos = [navegacion, barra_tandas(tandas, carpeta)]
+    trozos = [
+        barra_navegacion(botones_indices(carpeta), carpeta),
+        barra_paginas(botones_recorrido(salto, posicion, len(secciones))),
+        barra_tandas(tandas, carpeta),
+    ]
     for volumen, numero, articulos in tandas:
         trozos.append(
             encabezado_numero(
@@ -3316,13 +3343,11 @@ def pagina_autor(autores, posicion, opciones, indices=None):
             return None
         return enlace_desde(autores[indice]["pagina"], carpeta)
 
-    botones = botones_indices(carpeta) + [
-        boton_web("« Primero", salto(0)),
-        boton_web("‹ Anterior", salto(posicion - 1)),
-        boton_web("Siguiente ›", salto(posicion + 1)),
-        boton_web("Último »", salto(len(autores) - 1)),
+    trozos = [
+        barra_navegacion(botones_indices(carpeta), carpeta),
+        barra_paginas(botones_recorrido(salto, posicion, len(autores))),
+        linea_firmas(autor),
     ]
-    trozos = [barra_navegacion(botones, carpeta), linea_firmas(autor)]
     for volumen, numero, tandas in tandas_del_autor(autor):
         trozos.append(encabezado_numero(volumen, numero, carpeta))
         for seccion, articulos in tandas:
@@ -3333,6 +3358,99 @@ def pagina_autor(autores, posicion, opciones, indices=None):
                 for articulo in articulos
             )
     return envolver_pagina(autor["nombre"], "\n".join(trozos), carpeta)
+
+
+def fila_estadistica(nombre, valor):
+    """Una fila de dos celdas: de qué se trata y cuánto hay.
+
+    El nombre llega ya en HTML, que a veces es un enlace y a veces no.
+    """
+    return '<tr><td class="nombre">%s</td><td class="valor">%d</td></tr>' % (
+        nombre,
+        valor,
+    )
+
+
+def tabla_estadistica(titulo, columnas, filas):
+    """Una tabla con su título encima y sus dos encabezados de columna."""
+    return """<h2>%s</h2>
+<table class="estadisticas">
+<thead><tr><th class="nombre">%s</th><th class="valor">%s</th></tr></thead>
+<tbody>
+%s
+</tbody>
+</table>""" % (
+        escapar_html(titulo),
+        escapar_html(columnas[0]),
+        escapar_html(columnas[1]),
+        "\n".join(filas),
+    )
+
+
+def datos_generales(mapa, numeros, secciones, autores):
+    """Las cuentas gordas del archivo: cuánto hay de cada cosa."""
+    articulos = sum(contar_articulos(numero["articulos"]) for _, numero in numeros)
+    return [
+        ("Volúmenes", len(mapa["volumenes"])),
+        ("Números", len(numeros)),
+        ("Secciones", len(secciones)),
+        ("Autores", len(autores)),
+        ("Artículos", articulos),
+        # un artículo a tres manos son tres firmas, y por eso salen más
+        ("Firmas", sum(autor["articulos"] for autor in autores)),
+    ]
+
+
+def mas_prolificos(autores, desde=PROLIFICOS):
+    """Los autores con más artículos, del que más tiene al que menos.
+
+    A igualdad de artículos manda el orden alfabético, que es en el que ya
+    vienen: sorted() es estable y no los descoloca.
+    """
+    nutridos = [autor for autor in autores if autor["articulos"] >= desde]
+    return sorted(nutridos, key=lambda autor: -autor["articulos"])
+
+
+def reparto_autores(autores):
+    """Cuántos autores han publicado un artículo, cuántos dos, cuántos tres...
+
+    Las cantidades que no ha alcanzado nadie no salen: los más prolíficos van
+    tan sueltos que la tabla sería casi toda ceros.
+    """
+    return sorted(Counter(autor["articulos"] for autor in autores).items())
+
+
+def pagina_estadisticas(mapa, numeros, secciones, autores, opciones):
+    """Unas cuantas cuentas sobre el archivo, cada una en su tabla."""
+    generales = [
+        fila_estadistica(escapar_html(nombre), valor)
+        for nombre, valor in datos_generales(mapa, numeros, secciones, autores)
+    ]
+    prolificos = [
+        fila_estadistica(
+            '<a href="%s">%s</a>'
+            % (enlace_web(autor["pagina"]), escapar_html(autor["nombre"])),
+            autor["articulos"],
+        )
+        for autor in mas_prolificos(autores)
+    ]
+    reparto = [
+        fila_estadistica("%d" % articulos, cuantos)
+        for articulos, cuantos in reparto_autores(autores)
+    ]
+    cuerpo = "\n".join(
+        [
+            barra_navegacion(botones_indices("", salvo=NOMBRE_ESTADISTICAS), ""),
+            tabla_estadistica("Datos generales", ("Concepto", "Cantidad"), generales),
+            tabla_estadistica(
+                "Autores más prolíficos", ("Autor", "Artículos"), prolificos
+            ),
+            tabla_estadistica(
+                "Distribución de autores", ("Artículos", "Autores"), reparto
+            ),
+        ]
+    )
+    return envolver_pagina("Estadísticas", cuerpo, "")
 
 
 def firma_indice(nombre, firmas, indices):
@@ -3643,6 +3761,11 @@ def generar_web(opciones):
         )
     informar(opciones, "  %d páginas de autor" % len(autores))
 
+    escribir_web(
+        NOMBRE_ESTADISTICAS,
+        pagina_estadisticas(mapa, numeros, secciones, autores, opciones),
+        opciones,
+    )
     escribir_web(NOMBRE_TEMA, guion_tema(), opciones)
     escribir_web(NOMBRE_BUSQUEDA, pagina_busqueda(), opciones)
     escribir_web(NOMBRE_BUSQUEDA_AUTORES, pagina_busqueda(True), opciones)
